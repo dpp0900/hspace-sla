@@ -4,10 +4,12 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import platform
 import shutil
 import subprocess
 import sys
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 from urllib.error import URLError
@@ -18,6 +20,15 @@ from urllib.request import urlopen
 DEFAULT_SDK_ROOT = Path.home() / "Library" / "Android" / "sdk"
 DEFAULT_EMULATOR_PATH = DEFAULT_SDK_ROOT / "emulator" / "emulator"
 DEFAULT_ADB_PATH = DEFAULT_SDK_ROOT / "platform-tools" / "adb"
+
+
+@dataclass(frozen=True)
+class AvdDefinition:
+    name: str
+    path: Path
+    abi: str
+    cpu_arch: str
+    system_image: str
 
 
 def log(message: str) -> None:
@@ -68,8 +79,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--avd",
-        default=os.getenv("ANDROID_AVD", "Medium_Phone_API_36_ARM64"),
-        help="실행할 Android Emulator AVD 이름",
+        default=os.getenv("ANDROID_AVD"),
+        help="실행할 Android Emulator AVD 이름. 지정하지 않으면 호스트 아키텍처에 맞는 AVD를 자동 선택합니다.",
     )
     parser.add_argument(
         "--serial",
@@ -197,6 +208,115 @@ def resolve_sdk_root(path_hint: str) -> str:
     fail(f"Android SDK 경로를 찾지 못했습니다: {expanded}")
 
 
+def detect_host_architecture() -> str:
+    machine = platform.machine().lower()
+    if machine in {"arm64", "aarch64"}:
+        return "arm64"
+    if machine in {"x86_64", "amd64"}:
+        return "x86_64"
+    return machine
+
+
+def avd_home() -> Path:
+    return Path(os.getenv("ANDROID_AVD_HOME", Path.home() / ".android" / "avd")).expanduser()
+
+
+def parse_ini_file(path: Path) -> dict[str, str]:
+    data: dict[str, str] = {}
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith(("#", ";")) or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        data[key.strip()] = value.strip()
+    return data
+
+
+def normalize_abi(value: str) -> str:
+    normalized = value.strip().lower()
+    if "arm64-v8a" in normalized or normalized == "arm64":
+        return "arm64-v8a"
+    if "x86_64" in normalized:
+        return "x86_64"
+    if normalized == "x86":
+        return "x86"
+    return normalized
+
+
+def load_avd_definitions() -> list[AvdDefinition]:
+    definitions: list[AvdDefinition] = []
+    home = avd_home()
+    for ini_path in sorted(home.glob("*.ini")):
+        ini_data = parse_ini_file(ini_path)
+        config_dir = Path(ini_data.get("path", home / f"{ini_path.stem}.avd")).expanduser()
+        config_path = config_dir / "config.ini"
+        config_data = parse_ini_file(config_path) if config_path.exists() else {}
+        definitions.append(
+            AvdDefinition(
+                name=ini_path.stem,
+                path=config_dir,
+                abi=normalize_abi(config_data.get("abi.type", "")),
+                cpu_arch=config_data.get("hw.cpu.arch", "").strip().lower(),
+                system_image=config_data.get("image.sysdir.1", "").strip(),
+            )
+        )
+    return definitions
+
+
+def preferred_abis_for_host(host_arch: str) -> list[str]:
+    if host_arch == "arm64":
+        return ["arm64-v8a"]
+    if host_arch == "x86_64":
+        return ["x86_64", "x86"]
+    return [host_arch]
+
+
+def avd_supported_abis(definition: AvdDefinition) -> set[str]:
+    candidates = {
+        normalize_abi(definition.abi),
+        normalize_abi(definition.cpu_arch),
+        normalize_abi(Path(definition.system_image.rstrip("/")).name),
+    }
+    return {candidate for candidate in candidates if candidate}
+
+
+def avd_label(definition: AvdDefinition) -> str:
+    supported = sorted(avd_supported_abis(definition))
+    abi_label = "/".join(supported) if supported else "unknown"
+    return f"{definition.name}[{abi_label}]"
+
+
+def select_compatible_avd(explicit_avd: str | None) -> str:
+    definitions = load_avd_definitions()
+    if not definitions:
+        fail(
+            "Android AVD를 찾지 못했습니다. Android Studio Device Manager 또는 avdmanager로 "
+            "에뮬레이터를 먼저 생성하세요."
+        )
+
+    if explicit_avd:
+        if any(definition.name == explicit_avd for definition in definitions):
+            return explicit_avd
+        available = ", ".join(avd_label(definition) for definition in definitions)
+        fail(f"지정한 AVD를 찾지 못했습니다: {explicit_avd}. available={available}")
+
+    host_arch = detect_host_architecture()
+    preferred_abis = preferred_abis_for_host(host_arch)
+    for preferred_abi in preferred_abis:
+        for definition in definitions:
+            if preferred_abi in avd_supported_abis(definition):
+                log(f"호스트 아키텍처({host_arch})에 맞는 AVD 자동 선택: {avd_label(definition)}")
+                return definition.name
+
+    available = ", ".join(avd_label(definition) for definition in definitions)
+    fail(
+        "호스트 아키텍처에 맞는 AVD를 찾지 못했습니다. "
+        f"host={host_arch}, required ABI={', '.join(preferred_abis)}, available={available}. "
+        "README의 환경 구성 가이드를 참고해 적절한 system image로 AVD를 생성하거나 "
+        "--avd / ANDROID_AVD로 직접 지정하세요."
+    )
+
+
 def adb_devices(adb_path: str) -> list[str]:
     result = run_command([adb_path, "devices"])
     devices: list[str] = []
@@ -258,10 +378,11 @@ def ensure_emulator(args: argparse.Namespace, adb_path: str) -> str:
         return serial
 
     emulator_path = resolve_executable(args.emulator_path, "emulator")
+    selected_avd = select_compatible_avd(args.avd)
     known_serials = set(running)
-    launch_command = [emulator_path, f"@{args.avd}", *args.emulator_arg]
+    launch_command = [emulator_path, f"@{selected_avd}", *args.emulator_arg]
 
-    log(f"AVD 실행: {args.avd}")
+    log(f"AVD 실행: {selected_avd}")
     subprocess.Popen(
         launch_command,
         stdout=subprocess.DEVNULL,
