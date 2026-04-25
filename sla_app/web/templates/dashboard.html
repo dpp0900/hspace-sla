@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · SLA Test Runner{% endblock %}
+{% block content %}
+<section class="hero-band">
+  <div>
+    <p class="eyebrow">Local Android SLA</p>
+    <h1>Dashboard</h1>
+  </div>
+  <a class="button primary" href="/suites/new">New Suite</a>
+</section>
+
+<section class="metric-grid">
+  <div class="metric pass">
+    <span>PASS</span>
+    <strong>{{ counts.get("PASS", 0) }}</strong>
+  </div>
+  <div class="metric fail">
+    <span>FAIL</span>
+    <strong>{{ counts.get("FAIL", 0) }}</strong>
+  </div>
+  <div class="metric neutral">
+    <span>Total</span>
+    <strong>{{ counts.get("PASS", 0) + counts.get("FAIL", 0) }}</strong>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="section-head">
+    <h2>Recent Runs</h2>
+  </div>
+  {% if runs %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Status</th>
+          <th>Suite</th>
+          <th>Duration</th>
+          <th>Assertions</th>
+          <th>Metrics</th>
+          <th>Started</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for run in runs %}
+        <tr>
+          <td><a class="status {{ run.status|lower }}" href="/runs/{{ run.run_id }}">{{ run.status }}</a></td>
+          <td>{{ run.suite_name }}</td>
+          <td>{{ run.duration_ms }} ms</td>
+          <td>{{ run.assertion_failures }}</td>
+          <td>{{ run.metric_violations }}</td>
+          <td>{{ run.started_at }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="empty">No runs yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

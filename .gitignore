@@ -4,3 +4,5 @@ __pycache__/
 test-apk/build/*
 !test-apk/build/
 !test-apk/build/hspace-test-app-debug.apk
+sla_app.db
+artifacts/

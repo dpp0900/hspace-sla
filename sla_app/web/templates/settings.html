@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Settings · SLA Test Runner{% endblock %}
+{% block content %}
+<section class="hero-band">
+  <div>
+    <p class="eyebrow">Android Environment</p>
+    <h1>Settings</h1>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="settings-grid">
+    <div>
+      <span class="label">Host Arch</span>
+      <strong>{{ host_arch }}</strong>
+    </div>
+    <div>
+      <span class="label">Android SDK</span>
+      <strong class="{{ 'ok' if sdk_exists else 'bad' }}">{{ sdk_root }}</strong>
+    </div>
+    <div>
+      <span class="label">ADB</span>
+      <strong class="{{ 'ok' if adb_exists else 'bad' }}">{{ adb_path }}</strong>
+    </div>
+    <div>
+      <span class="label">Appium</span>
+      <strong class="{{ 'ok' if appium_ready else 'bad' }}">{{ appium_url }}</strong>
+    </div>
+    <div>
+      <span class="label">AVD Home</span>
+      <strong>{{ avd_home }}</strong>
+    </div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="section-head">
+    <h2>AVDs</h2>
+  </div>
+  {% if avd_error %}
+  <div class="alert">{{ avd_error }}</div>
+  {% endif %}
+  {% if avds %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>ABI</th>
+          <th>CPU</th>
+          <th>System Image</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for avd in avds %}
+        <tr>
+          <td>{{ avd.name }}</td>
+          <td>{{ avd.abi }}</td>
+          <td>{{ avd.cpu_arch }}</td>
+          <td>{{ avd.system_image }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="empty">No AVDs found.</p>
+  {% endif %}
+</section>
+{% endblock %}

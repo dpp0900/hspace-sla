@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} · SLA Test Runner{% endblock %}
+{% block content %}
+<section class="hero-band">
+  <div>
+    <p class="eyebrow">Suite YAML</p>
+    <h1>{{ title }}</h1>
+  </div>
+  <a class="button" href="/suites">Back</a>
+</section>
+
+<section class="panel">
+  {% if error %}
+  <div class="alert">{{ error }}</div>
+  {% endif %}
+  <form class="yaml-form" action="{{ action }}" method="post">
+    <label for="yaml_text">YAML</label>
+    <textarea id="yaml_text" name="yaml_text" spellcheck="false">{{ yaml_text }}</textarea>
+    <div class="form-actions">
+      <button class="button primary" type="submit">Save</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

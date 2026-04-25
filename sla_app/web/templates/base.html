@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}SLA Test Runner{% endblock %}</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/">SLA Test Runner</a>
+      <nav class="nav">
+        <a class="{{ 'active' if active == 'dashboard' else '' }}" href="/">Dashboard</a>
+        <a class="{{ 'active' if active == 'suites' else '' }}" href="/suites">Test Suites</a>
+        <a class="{{ 'active' if active == 'settings' else '' }}" href="/settings">Settings</a>
+      </nav>
+    </header>
+    <main class="shell">
+      {% block content %}{% endblock %}
+    </main>
+  </body>
+</html>

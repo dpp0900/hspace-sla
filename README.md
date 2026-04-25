@@ -10,9 +10,30 @@
 핵심 파일:
 
 - `launch_android_app.py`: 에뮬레이터 부팅, Appium 서버 연결, 앱 실행
+- `run_sla_web.py`: 로컬 SLA 테스트 웹앱 실행
+- `sla_launcher/`: 런처 내부 구현 패키지
+- `sla_app/`: 테스트 정의, 실행 엔진, 저장소, 웹 UI
+- `suites/`: YAML 테스트 스위트
+- `artifacts/`: 실행별 스크린샷/로그 저장 위치
 - `requirements.txt`: Python 의존성
 - `test-apk/build/hspace-test-app-debug.apk`: 바로 설치 가능한 검증용 APK
 - `test-apk/build_test_apk.sh`: 검증용 APK 재빌드 스크립트
+
+## 0. 프로젝트 구조
+
+- `launch_android_app.py`: 외부에서 실행하는 얇은 엔트리포인트
+- `sla_launcher/config.py`: CLI 인자 파싱과 설정 객체 생성
+- `sla_launcher/android.py`: AVD 탐색, 아키텍처 판별, 에뮬레이터 부팅
+- `sla_launcher/appium_server.py`: Appium 서버 상태 확인과 자동 시작
+- `sla_launcher/session.py`: Appium capability 구성과 드라이버 생성
+- `sla_launcher/process.py`: subprocess 실행, SDK/실행 파일 해석
+- `sla_launcher/paths.py`: OS별 SDK/실행 파일 경로 유틸
+- `sla_launcher/console.py`: 공통 로그/오류 출력
+- `sla_launcher/main.py`: 전체 실행 흐름 오케스트레이션
+- `sla_app/core/`: YAML 테스트 모델, 검증, 실행 엔진, SLA 판정
+- `sla_app/adapters/android_appium/`: Appium 기반 Android 액션 어댑터
+- `sla_app/storage/`: SQLite 저장소와 아티팩트 경로 관리
+- `sla_app/web/`: FastAPI, Jinja2, HTMX 기반 로컬 UI
 
 ## 1. 지원 범위
 
@@ -25,8 +46,9 @@
 
 - 에뮬레이터 자동 선택 로직은 CPU 아키텍처 기준으로 동작합니다.
 - 커밋된 테스트 APK는 네이티브 `.so`가 없는 순수 Dex APK라 CPU 아키텍처와 무관하게 설치할 수 있습니다.
-- 실행 스크립트와 기본 경로는 macOS 기준으로 작성되어 있습니다.
-- Windows와 Linux도 환경 변수와 실행 경로를 맞추면 사용할 수 있지만, README의 기본값은 macOS 기준입니다.
+- 실행 스크립트는 OS별 기본 SDK 경로를 추정하도록 구성되어 있습니다.
+- Windows와 Linux도 환경 변수와 실행 경로를 맞추면 사용할 수 있습니다.
+- README의 예시는 macOS와 Windows를 함께 다루지만, 테스트 APK 재빌드 스크립트는 macOS/Linux 기준입니다.
 - `test-apk/build_test_apk.sh`는 bash 스크립트라 macOS/Linux에서 바로 사용 가능합니다. Windows에서는 커밋된 APK를 그대로 쓰는 편이 간단합니다.
 
 ## 2. 아키텍처별 빠른 판단표
@@ -178,11 +200,7 @@ py -3 -m venv .venv
 pip install -r requirements.txt
 ```
 
-현재 Python 의존성:
-
-```text
-Appium-Python-Client==5.3.0
-```
+현재 Python 의존성은 `requirements.txt`에 고정되어 있습니다. Appium 실행, FastAPI 웹 UI, YAML 파싱, 웹 smoke 테스트에 필요한 패키지를 함께 설치합니다.
 
 ### 4-6. Appium 2 설치
 
@@ -222,8 +240,7 @@ $env:PATH="$env:ANDROID_SDK_ROOT\platform-tools;$env:ANDROID_SDK_ROOT\emulator;$
 
 주의:
 
-- `launch_android_app.py`의 기본 SDK 경로는 macOS 값으로 설정되어 있습니다.
-- Windows나 Linux에서는 `ANDROID_SDK_ROOT`, `ANDROID_HOME`, `ANDROID_ADB_PATH`, `ANDROID_EMULATOR_PATH`를 환경 변수로 지정하는 편이 안전합니다.
+- `launch_android_app.py`는 OS별 기본 SDK 경로를 추정하지만, 팀 환경이 다르면 `ANDROID_SDK_ROOT`, `ANDROID_HOME`, `ANDROID_ADB_PATH`, `ANDROID_EMULATOR_PATH`를 명시하는 편이 안전합니다.
 
 ## 5. 테스트 APK
 
@@ -296,7 +313,64 @@ chmod +x test-apk/build_test_apk.sh
   --app-wait-activity "com.example.myapp.*"
 ```
 
-## 7. 자주 쓰는 옵션
+### 6-5. SLA 웹앱 실행
+
+```bash
+./.venv/bin/python run_sla_web.py
+```
+
+기본 URL은 `http://127.0.0.1:8000`입니다. 포트를 바꾸려면 `SLA_WEB_PORT`를 지정합니다.
+
+```bash
+SLA_WEB_PORT=8010 ./.venv/bin/python run_sla_web.py
+```
+
+웹앱은 기본적으로 현재 작업 디렉터리에 `sla_app.db`, `suites/`, `artifacts/`를 사용합니다. 다른 위치를 쓰려면 `SLA_APP_HOME`을 지정합니다.
+
+웹앱에서 suite를 실행할 때는 Appium 서버가 없으면 기본적으로 Python `AppiumService`로 자동 시작을 시도합니다. 수동으로 띄운 Appium 서버만 사용하려면 `SLA_START_APPIUM=false`를 지정합니다.
+
+```bash
+SLA_START_APPIUM=false SLA_WEB_PORT=8010 ./.venv/bin/python run_sla_web.py
+```
+
+## 7. SLA 테스트 스위트 YAML
+
+첫 MVP에서 지원하는 액션은 아래 9개입니다.
+
+- `launch_app`
+- `tap`
+- `input`
+- `wait`
+- `assert_text`
+- `assert_exists`
+- `screenshot`
+- `collect_metrics`
+- `metric_check`
+
+예시:
+
+```yaml
+name: Android Smoke
+app:
+  platform: android
+  apk: test-apk/build/hspace-test-app-debug.apk
+thresholds:
+  max_duration_ms: 30000
+  max_assertion_failures: 0
+  max_metric_violations: 0
+scenarios:
+  - name: launch and capture
+    steps:
+      - action: launch_app
+      - action: wait
+        timeout_ms: 1000
+      - action: screenshot
+        name: launch
+```
+
+SLA 판정은 시나리오 실행 성공 여부, `duration_ms`, assertion 실패 수, metric 위반 수를 기준으로 `PASS` 또는 `FAIL`을 저장합니다. 실행 메타데이터와 판정 결과는 SQLite에 저장하고, 스크린샷은 `artifacts/<run_id>/` 아래에 저장합니다.
+
+## 8. 자주 쓰는 옵션
 
 - `--avd`: 특정 AVD를 강제로 지정
 - `--serial`: 이미 실행 중인 특정 에뮬레이터를 지정
@@ -310,7 +384,7 @@ chmod +x test-apk/build_test_apk.sh
 - `--launch-wait 10`: 앱 실행 후 10초 유지
 - `--keep-appium-running`: 스크립트가 띄운 Appium 서버를 종료하지 않음
 
-## 8. 동작 순서
+## 9. 동작 순서
 
 1. 실행 중인 Android Emulator가 있는지 확인
 2. 없으면 AVD를 직접 사용하거나, 호스트 아키텍처에 맞는 AVD를 자동 선택해 부팅
@@ -319,7 +393,17 @@ chmod +x test-apk/build_test_apk.sh
 5. `apk` 또는 `appPackage/appActivity` capability로 세션 생성
 6. 앱이 실행되면 잠시 유지 후 세션 종료
 
-## 9. 문제 해결
+## 10. 검증
+
+```bash
+python3 -m py_compile launch_android_app.py $(find sla_launcher sla_app -name '*.py')
+python3 -m unittest discover
+python3 launch_android_app.py --help
+```
+
+Android 실제 실행 검증은 Appium 2, `uiautomator2`, 호스트 아키텍처에 맞는 AVD가 준비된 상태에서 수행합니다.
+
+## 11. 문제 해결
 
 호스트 아키텍처와 맞는 AVD를 찾지 못했다는 오류가 나오면:
 

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Test Suites · SLA Test Runner{% endblock %}
+{% block content %}
+<section class="hero-band">
+  <div>
+    <p class="eyebrow">YAML and Form</p>
+    <h1>Test Suites</h1>
+  </div>
+  <a class="button primary" href="/suites/new">New Suite</a>
+</section>
+
+<section class="panel">
+  {% if suites %}
+  <div class="suite-list">
+    {% for suite in suites %}
+    <article class="suite-row">
+      <div>
+        <h2>{{ suite.name }}</h2>
+        <p>{{ suite.yaml_path }}</p>
+      </div>
+      <div class="actions">
+        <form action="/suites/{{ suite.suite_id }}/runs" method="post">
+          <button class="button primary" type="submit" hx-confirm="Run {{ suite.name }} now?">Run</button>
+        </form>
+        <a class="button" href="/suites/{{ suite.suite_id }}/edit">Edit</a>
+        <a class="button" href="/suites/{{ suite.suite_id }}/export">Export</a>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="empty">No suites yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

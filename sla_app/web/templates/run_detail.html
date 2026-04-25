@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Run {{ run.run_id }} · SLA Test Runner{% endblock %}
+{% block content %}
+<section class="hero-band">
+  <div>
+    <p class="eyebrow">{{ run.started_at }}</p>
+    <h1>{{ run.suite_name }}</h1>
+  </div>
+  <span class="status big {{ run.status|lower }}">{{ run.status }}</span>
+</section>
+
+<section class="metric-grid">
+  <div class="metric neutral">
+    <span>Duration</span>
+    <strong>{{ run.duration_ms }} ms</strong>
+  </div>
+  <div class="metric fail">
+    <span>Assertion Failures</span>
+    <strong>{{ run.assertion_failures }}</strong>
+  </div>
+  <div class="metric fail">
+    <span>Metric Violations</span>
+    <strong>{{ run.metric_violations }}</strong>
+  </div>
+</section>
+
+{% if run.reasons %}
+<section class="panel">
+  <h2>SLA Violations</h2>
+  <ul class="reason-list">
+    {% for reason in run.reasons %}
+    <li>{{ reason }}</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+{% for scenario in run.scenarios %}
+<section class="panel">
+  <div class="section-head">
+    <h2>{{ scenario.name }}</h2>
+    <span class="status {{ scenario.verdict.status|lower }}">{{ scenario.verdict.status }}</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Action</th>
+          <th>Status</th>
+          <th>Duration</th>
+          <th>Message</th>
+          <th>Artifact</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for step in scenario.step_results %}
+        <tr>
+          <td>{{ step.index }}</td>
+          <td>{{ step.action }}</td>
+          <td><span class="status {{ 'pass' if step.success else 'fail' }}">{{ 'PASS' if step.success else 'FAIL' }}</span></td>
+          <td>{{ step.duration_ms }} ms</td>
+          <td>{{ step.message }}</td>
+          <td>
+            {% set screenshot_url = step.screenshot_path|artifact_url %}
+            {% if screenshot_url %}
+            <a href="{{ screenshot_url }}"><img class="thumb" src="{{ screenshot_url }}" alt="screenshot"></a>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endfor %}
+{% endblock %}
