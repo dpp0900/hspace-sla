@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Edit {{ suite.name }} · SLA Test Runner{% endblock %}
+{% block content %}
+<section class="hero-band">
+  <div>
+    <p class="eyebrow">Choose edit mode</p>
+    <h1>{{ suite.name }}</h1>
+  </div>
+  <div class="actions">
+    <form action="/suites/{{ suite.suite_id }}/runs" method="post">
+      <button class="button primary" type="submit" hx-confirm="Run {{ suite.name }} now?">Run</button>
+    </form>
+    <a class="button" href="/suites">Back</a>
+  </div>
+</section>
+
+<section class="mode-grid">
+  {% if helper_available %}
+  <a class="mode-card recommended" href="/suites/{{ suite.suite_id }}/edit/helper">
+    <span class="mode-tag">Recommended</span>
+    <h2>Guided Helper</h2>
+    <p>Edit the app target, SLA limits, and steps with form controls.</p>
+    <span class="button primary">Open Helper</span>
+  </a>
+  {% else %}
+  <article class="mode-card disabled" aria-disabled="true">
+    <span class="mode-tag">Unavailable</span>
+    <h2>Guided Helper</h2>
+    <p>This suite uses advanced YAML that the helper cannot safely preserve.</p>
+    <ul class="mode-reasons">
+      {% for reason in helper_reasons %}
+      <li>{{ reason }}</li>
+      {% endfor %}
+    </ul>
+    <span class="button disabled">Use YAML</span>
+  </article>
+  {% endif %}
+
+  <a class="mode-card" href="/suites/{{ suite.suite_id }}/edit/yaml">
+    <span class="mode-tag">Advanced</span>
+    <h2>YAML Editor</h2>
+    <p>Edit the exact YAML file for multiple scenarios or custom fields.</p>
+    <span class="button">Open YAML</span>
+  </a>
+</section>
+
+<section class="panel suite-file-panel">
+  <dl class="suite-meta">
+    <div>
+      <dt>ID</dt>
+      <dd>{{ suite.suite_id }}</dd>
+    </div>
+    <div>
+      <dt>YAML</dt>
+      <dd>{{ suite.yaml_path }}</dd>
+    </div>
+    <div>
+      <dt>Updated</dt>
+      <dd>{{ suite.updated_at }}</dd>
+    </div>
+  </dl>
+</section>
+{% endblock %}

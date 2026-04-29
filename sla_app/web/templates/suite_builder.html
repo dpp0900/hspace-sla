@@ -1,15 +1,15 @@
 {% extends "base.html" %}
-{% block title %}Guided Builder · SLA Test Runner{% endblock %}
+{% block title %}{{ title|default("Guided Builder") }} · SLA Test Runner{% endblock %}
 {% block content %}
 <section class="hero-band">
   <div>
-    <p class="eyebrow">No-code suite</p>
-    <h1>Guided Builder</h1>
+    <p class="eyebrow">{{ eyebrow|default("No-code suite") }}</p>
+    <h1>{{ title|default("Guided Builder") }}</h1>
   </div>
   <div class="actions">
     <a class="button" href="/guide" target="_blank" rel="noreferrer">YAML Guide</a>
-    <a class="button" href="/suites/new">YAML Editor</a>
-    <a class="button" href="/suites">Back</a>
+    <a class="button" href="{{ yaml_url|default('/suites/new') }}">YAML Editor</a>
+    <a class="button" href="{{ back_url|default('/suites') }}">Back</a>
   </div>
 </section>
 
@@ -17,7 +17,11 @@
 <div class="alert">{{ error }}</div>
 {% endif %}
 
-<form class="builder-form" action="/suites/builder" method="post">
+{% if notice %}
+<div class="notice">{{ notice }}</div>
+{% endif %}
+
+<form class="builder-form" action="{{ action|default('/suites/builder') }}" method="post">
   <section class="builder-grid">
     <div class="panel builder-panel">
       <div class="section-head">
@@ -117,7 +121,7 @@
       {% endfor %}
     </div>
     <div class="form-actions">
-      <button class="button primary" type="submit">Save Suite</button>
+      <button class="button primary" type="submit">{{ submit_label|default("Save Suite") }}</button>
     </div>
   </section>
 </form>

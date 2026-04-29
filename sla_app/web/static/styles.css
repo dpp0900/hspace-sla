@@ -328,6 +328,17 @@ th {
   padding: 12px;
 }
 
+.notice {
+  background: #edf4f1;
+  border: 1px solid #c8ddd7;
+  border-radius: 8px;
+  color: var(--teal-dark);
+  font-weight: 700;
+  line-height: 1.5;
+  margin-bottom: 16px;
+  padding: 12px;
+}
+
 .empty-state {
   align-items: center;
   display: grid;
@@ -343,6 +354,80 @@ th {
 .empty-state p {
   color: var(--muted);
   margin: 0;
+}
+
+.mode-grid {
+  align-items: stretch;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 20px;
+}
+
+.mode-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: inherit;
+  display: grid;
+  gap: 12px;
+  min-height: 240px;
+  padding: 22px;
+  text-decoration: none;
+}
+
+.mode-card.recommended {
+  border-color: #9fc7bf;
+}
+
+.mode-card.disabled {
+  background: #fbfbf9;
+}
+
+.mode-card h2,
+.mode-card p {
+  margin: 0;
+}
+
+.mode-card p {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.mode-card .button {
+  align-self: end;
+  justify-self: start;
+}
+
+.mode-card:hover {
+  border-color: var(--teal);
+}
+
+.mode-card.disabled:hover {
+  border-color: var(--line);
+}
+
+.mode-tag {
+  color: var(--teal);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.mode-reasons {
+  color: var(--muted);
+  line-height: 1.45;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.button.disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.suite-file-panel {
+  margin-bottom: 0;
 }
 
 .yaml-form {
@@ -712,6 +797,7 @@ select:focus {
   .metric-grid,
   .settings-grid,
   .builder-grid,
+  .mode-grid,
   .field-grid,
   .field-grid.compact,
   .step-fields,

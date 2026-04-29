@@ -8,7 +8,10 @@
   </div>
   <div class="actions">
     <a class="button" href="/guide" target="_blank" rel="noreferrer">YAML Guide</a>
-    <a class="button" href="/suites">Back</a>
+    {% if helper_url %}
+    <a class="button" href="{{ helper_url }}">Use Helper</a>
+    {% endif %}
+    <a class="button" href="{{ back_url|default('/suites') }}">Back</a>
   </div>
 </section>
 

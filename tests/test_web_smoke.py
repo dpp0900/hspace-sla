@@ -58,12 +58,44 @@ class WebSmokeTests(unittest.TestCase):
                 "/",
                 "/suites",
                 "/suites/builder",
+                f"/suites/{summary.suite_id}/edit",
+                f"/suites/{summary.suite_id}/edit/helper",
+                f"/suites/{summary.suite_id}/edit/yaml",
                 "/runs/run-web",
                 "/guide",
                 "/settings",
             ):
                 response = client.get(path)
                 self.assertEqual(response.status_code, 200, path)
+
+            response = client.post(
+                f"/suites/{summary.suite_id}/edit/helper",
+                data={
+                    "suite_name": "Edited Web Suite",
+                    "target_mode": "apk",
+                    "apk": "edited.apk",
+                    "max_duration_ms": "25000",
+                    "max_assertion_failures": "0",
+                    "max_metric_violations": "0",
+                    "required_assertions": "0",
+                    "scenario_name": "edited smoke",
+                    "step_action": ["launch_app", "wait"],
+                    "step_selector": ["", ""],
+                    "step_text": ["", ""],
+                    "step_value": ["", ""],
+                    "step_timeout_ms": ["", "500"],
+                    "step_name": ["", ""],
+                    "step_metric": ["", ""],
+                    "step_min": ["", ""],
+                    "step_max": ["", ""],
+                },
+                follow_redirects=False,
+            )
+            self.assertEqual(response.status_code, 303)
+            edited_suite = store.load_suite(summary.suite_id)
+            self.assertEqual(edited_suite.name, "Edited Web Suite")
+            self.assertEqual(edited_suite.app.apk, "edited.apk")
+            self.assertEqual(edited_suite.scenarios[0].steps[1].timeout_ms, 500)
 
             response = client.post(
                 "/suites/builder",

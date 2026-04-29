@@ -88,8 +88,15 @@ def create_app(base_dir: str | Path | None = None) -> FastAPI:
             "suite_builder.html",
             {
                 "active": "suites",
+                "title": "Guided Builder",
+                "eyebrow": "No-code suite",
+                "action": "/suites/builder",
+                "back_url": "/suites",
+                "yaml_url": "/suites/new",
+                "submit_label": "Save Suite",
                 "builder": _default_builder_state(),
                 "error": None,
+                "notice": None,
             },
         )
 
@@ -106,8 +113,15 @@ def create_app(base_dir: str | Path | None = None) -> FastAPI:
                 "suite_builder.html",
                 {
                     "active": "suites",
+                    "title": "Guided Builder",
+                    "eyebrow": "No-code suite",
+                    "action": "/suites/builder",
+                    "back_url": "/suites",
+                    "yaml_url": "/suites/new",
+                    "submit_label": "Save Suite",
                     "builder": builder,
                     "error": str(exc),
+                    "notice": None,
                 },
                 status_code=400,
             )
@@ -149,34 +163,129 @@ def create_app(base_dir: str | Path | None = None) -> FastAPI:
         return RedirectResponse("/suites", status_code=303)
 
     @app.get("/suites/{suite_id}/edit", response_class=HTMLResponse)
-    async def edit_suite(request: Request, suite_id: str):
+    async def choose_edit_mode(request: Request, suite_id: str):
+        summary = _suite_summary_or_404(store, suite_id)
+        try:
+            suite = store.load_suite(suite_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        helper_available, helper_reasons = _builder_compatibility(suite)
+        return templates.TemplateResponse(
+            request,
+            "suite_edit_choice.html",
+            {
+                "active": "suites",
+                "suite": summary,
+                "helper_available": helper_available,
+                "helper_reasons": helper_reasons,
+            },
+        )
+
+    @app.get("/suites/{suite_id}/edit/helper", response_class=HTMLResponse)
+    async def edit_suite_with_helper(request: Request, suite_id: str):
+        try:
+            suite = store.load_suite(suite_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        helper_available, helper_reasons = _builder_compatibility(suite)
+        if not helper_available:
+            return templates.TemplateResponse(
+                request,
+                "suite_edit_choice.html",
+                {
+                    "active": "suites",
+                    "suite": _suite_summary_or_404(store, suite_id),
+                    "helper_available": helper_available,
+                    "helper_reasons": helper_reasons,
+                },
+                status_code=400,
+            )
+        return templates.TemplateResponse(
+            request,
+            "suite_builder.html",
+            {
+                "active": "suites",
+                "title": "Edit with Helper",
+                "eyebrow": "Guided edit",
+                "action": f"/suites/{suite_id}/edit/helper",
+                "back_url": f"/suites/{suite_id}/edit",
+                "yaml_url": f"/suites/{suite_id}/edit/yaml",
+                "submit_label": "Save Changes",
+                "builder": _builder_state_from_suite(suite),
+                "error": None,
+                "notice": "Helper edits the supported fields for this suite and saves back to the same suite ID.",
+            },
+        )
+
+    @app.post("/suites/{suite_id}/edit/helper")
+    async def update_suite_from_helper(request: Request, suite_id: str):
+        if store.get_suite_summary(suite_id) is None:
+            raise HTTPException(status_code=404, detail="suite not found")
+        form = await request.form()
+        builder = _builder_state_from_form(form)
+        try:
+            yaml_text = _builder_state_to_yaml(builder)
+            suite = suite_from_yaml_text(yaml_text)
+        except (SuiteValidationError, ValueError) as exc:
+            return templates.TemplateResponse(
+                request,
+                "suite_builder.html",
+                {
+                    "active": "suites",
+                    "title": "Edit with Helper",
+                    "eyebrow": "Guided edit",
+                    "action": f"/suites/{suite_id}/edit/helper",
+                    "back_url": f"/suites/{suite_id}/edit",
+                    "yaml_url": f"/suites/{suite_id}/edit/yaml",
+                    "submit_label": "Save Changes",
+                    "builder": builder,
+                    "error": str(exc),
+                    "notice": None,
+                },
+                status_code=400,
+            )
+        store.save_suite(replace(suite, suite_id=suite_id), yaml_text)
+        return RedirectResponse("/suites", status_code=303)
+
+    @app.get("/suites/{suite_id}/edit/yaml", response_class=HTMLResponse)
+    async def edit_suite_yaml(request: Request, suite_id: str):
         yaml_text = _suite_yaml_or_404(store, suite_id)
+        helper_url = _helper_url_if_available(store, suite_id)
         return templates.TemplateResponse(
             request,
             "suite_form.html",
             {
                 "active": "suites",
-                "title": "Edit Suite",
-                "action": f"/suites/{suite_id}",
+                "title": "Edit YAML",
+                "action": f"/suites/{suite_id}/edit/yaml",
                 "yaml_text": yaml_text,
                 "error": None,
+                "helper_url": helper_url,
+                "back_url": f"/suites/{suite_id}/edit",
             },
         )
 
     @app.post("/suites/{suite_id}")
     async def update_suite(request: Request, suite_id: str, yaml_text: str = Form(...)):
+        return await update_suite_yaml(request, suite_id, yaml_text)
+
+    @app.post("/suites/{suite_id}/edit/yaml")
+    async def update_suite_yaml(request: Request, suite_id: str, yaml_text: str = Form(...)):
         try:
             suite = suite_from_yaml_text(yaml_text)
         except SuiteValidationError as exc:
+            helper_url = _helper_url_if_available(store, suite_id)
             return templates.TemplateResponse(
                 request,
                 "suite_form.html",
                 {
                     "active": "suites",
-                    "title": "Edit Suite",
-                    "action": f"/suites/{suite_id}",
+                    "title": "Edit YAML",
+                    "action": f"/suites/{suite_id}/edit/yaml",
                     "yaml_text": yaml_text,
                     "error": str(exc),
+                    "helper_url": helper_url,
+                    "back_url": f"/suites/{suite_id}/edit",
                 },
                 status_code=400,
             )
@@ -281,6 +390,22 @@ def _suite_yaml_or_404(store: SqliteStore, suite_id: str) -> str:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
+def _suite_summary_or_404(store: SqliteStore, suite_id: str):
+    summary = store.get_suite_summary(suite_id)
+    if summary is None:
+        raise HTTPException(status_code=404, detail="suite not found")
+    return summary
+
+
+def _helper_url_if_available(store: SqliteStore, suite_id: str) -> str | None:
+    try:
+        suite = store.load_suite(suite_id)
+    except KeyError:
+        return None
+    helper_available, _helper_reasons = _builder_compatibility(suite)
+    return f"/suites/{suite_id}/edit/helper" if helper_available else None
+
+
 def _import_existing_suites(store: SqliteStore) -> None:
     for path in sorted(store.suites_dir.glob("*.yaml")):
         try:
@@ -311,6 +436,70 @@ def _default_builder_state() -> dict[str, object]:
             {"action": "screenshot", "name": "launch"},
         ],
     }
+
+
+def _builder_state_from_suite(suite: TestSuite) -> dict[str, object]:
+    scenario = suite.scenarios[0]
+    target_mode = "installed" if suite.app.app_package and suite.app.app_activity else "apk"
+    memory_limit = suite.thresholds.metrics.get("memory_mb")
+    return {
+        "suite_name": suite.name,
+        "target_mode": target_mode,
+        "apk": suite.app.apk or "",
+        "app_package": suite.app.app_package or "",
+        "app_activity": suite.app.app_activity or "",
+        "app_wait_activity": suite.app.app_wait_activity or "",
+        "no_reset": suite.app.no_reset,
+        "max_duration_ms": _text_or_empty(suite.thresholds.max_duration_ms),
+        "max_assertion_failures": str(suite.thresholds.max_assertion_failures),
+        "max_metric_violations": str(suite.thresholds.max_metric_violations),
+        "required_assertions": _text_or_empty(suite.thresholds.required_assertions),
+        "memory_mb_max": _text_or_empty(memory_limit.max if memory_limit else None),
+        "scenario_name": scenario.name,
+        "steps": [_builder_step_from_model(step) for step in scenario.steps],
+    }
+
+
+def _builder_step_from_model(step: ActionStep) -> dict[str, str]:
+    return {
+        "action": step.action,
+        "selector": step.selector or "",
+        "text": step.text or "",
+        "value": _text_or_empty(step.value),
+        "timeout_ms": _text_or_empty(step.timeout_ms),
+        "name": step.name or "",
+        "metric": step.metric or "",
+        "min": _text_or_empty(step.min),
+        "max": _text_or_empty(step.max),
+    }
+
+
+def _builder_compatibility(suite: TestSuite) -> tuple[bool, list[str]]:
+    reasons: list[str] = []
+    if len(suite.scenarios) != 1:
+        reasons.append("Helper supports one scenario per suite.")
+    elif suite.scenarios[0].thresholds is not None:
+        reasons.append("Scenario-level thresholds require YAML editing.")
+
+    metric_names = set(suite.thresholds.metrics)
+    memory_limit = suite.thresholds.metrics.get("memory_mb")
+    if metric_names - {"memory_mb"}:
+        reasons.append("Custom suite-level metric thresholds require YAML editing.")
+    if memory_limit and memory_limit.min is not None:
+        reasons.append("Memory minimum thresholds require YAML editing.")
+
+    supported_step_keys = {"action", "selector", "text", "value", "timeout_ms", "name", "metric", "min", "max"}
+    for scenario in suite.scenarios:
+        for index, step in enumerate(scenario.steps, start=1):
+            extra_keys = set(step.raw) - supported_step_keys
+            if extra_keys:
+                keys = ", ".join(sorted(extra_keys))
+                reasons.append(f"Step {index} has advanced YAML fields: {keys}.")
+                break
+        if reasons:
+            break
+
+    return not reasons, reasons
 
 
 def _builder_state_from_form(form) -> dict[str, object]:
@@ -470,6 +659,10 @@ def _optional_float_text(value: object) -> float | None:
     if not text:
         return None
     return float(text)
+
+
+def _text_or_empty(value: object) -> str:
+    return "" if value is None else str(value)
 
 
 def _artifact_url_filter(store: SqliteStore):
