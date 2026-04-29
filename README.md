@@ -371,6 +371,8 @@ SLA_WEB_PORT=8010 ./.venv/bin/python run_sla_web.py
 - `collect_metrics`
 - `metric_check`
 
+상세 스키마, selector 형식, 액션별 필드, 전체 예시는 [SLA YAML Guide](docs/yaml-guide.md)를 참고하세요.
+
 예시:
 
 ```yaml
