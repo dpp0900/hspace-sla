@@ -132,12 +132,22 @@ h2 {
   color: #ffffff;
 }
 
+.button.danger {
+  border-color: #e4b1aa;
+  color: var(--red);
+}
+
 .button:hover {
   border-color: var(--teal);
 }
 
 .button.primary:hover {
   background: var(--teal-dark);
+}
+
+.button.danger:hover {
+  background: var(--red-bg);
+  border-color: var(--red);
 }
 
 .metric-grid {
@@ -268,6 +278,36 @@ th {
   overflow-wrap: anywhere;
 }
 
+.suite-summary {
+  min-width: 0;
+}
+
+.suite-meta {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 0;
+}
+
+.suite-meta div {
+  align-items: start;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 72px minmax(0, 1fr);
+}
+
+.suite-meta dt {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.suite-meta dd {
+  color: var(--muted);
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
 .actions,
 .form-actions {
   align-items: center;
@@ -286,6 +326,23 @@ th {
   font-weight: 700;
   margin-bottom: 16px;
   padding: 12px;
+}
+
+.empty-state {
+  align-items: center;
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+  min-height: 180px;
+}
+
+.empty-state.compact {
+  min-height: 132px;
+}
+
+.empty-state p {
+  color: var(--muted);
+  margin: 0;
 }
 
 .yaml-form {
@@ -484,7 +541,7 @@ select:focus {
   align-items: end;
   display: grid;
   gap: 10px;
-  grid-template-columns: minmax(0, 1fr) 40px;
+  grid-template-columns: minmax(0, 1fr) auto;
 }
 
 .step-fields {
@@ -499,6 +556,10 @@ select:focus {
   min-height: 40px;
   padding: 0;
   width: 40px;
+}
+
+.step-remove {
+  min-width: 88px;
 }
 
 .guide-layout {

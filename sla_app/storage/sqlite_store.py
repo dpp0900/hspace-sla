@@ -125,6 +125,26 @@ class SqliteStore:
             raise KeyError(f"suite not found: {suite_id}")
         return summary.yaml_path.read_text(encoding="utf-8")
 
+    def delete_suite(self, suite_id: str) -> bool:
+        summary = self.get_suite_summary(suite_id)
+        if summary is None:
+            return False
+
+        with self._managed_connection() as conn:
+            conn.execute("DELETE FROM suites WHERE id = ?", (suite_id,))
+
+        self._delete_owned_suite_file(summary.yaml_path)
+        return True
+
+    def _delete_owned_suite_file(self, yaml_path: Path) -> None:
+        try:
+            resolved_path = yaml_path.resolve()
+            suites_root = self.suites_dir.resolve()
+            if resolved_path.is_file() and suites_root in resolved_path.parents:
+                resolved_path.unlink()
+        except OSError:
+            return
+
     def artifact_dir_for_run(self, run_id: str) -> Path:
         artifact_dir = self.artifacts_dir / run_id
         artifact_dir.mkdir(parents=True, exist_ok=True)

@@ -17,9 +17,22 @@
   <div class="suite-list">
     {% for suite in suites %}
     <article class="suite-row">
-      <div>
+      <div class="suite-summary">
         <h2>{{ suite.name }}</h2>
-        <p>{{ suite.yaml_path }}</p>
+        <dl class="suite-meta">
+          <div>
+            <dt>ID</dt>
+            <dd>{{ suite.suite_id }}</dd>
+          </div>
+          <div>
+            <dt>YAML</dt>
+            <dd>{{ suite.yaml_path }}</dd>
+          </div>
+          <div>
+            <dt>Updated</dt>
+            <dd>{{ suite.updated_at }}</dd>
+          </div>
+        </dl>
       </div>
       <div class="actions">
         <form action="/suites/{{ suite.suite_id }}/runs" method="post">
@@ -27,12 +40,22 @@
         </form>
         <a class="button" href="/suites/{{ suite.suite_id }}/edit">Edit</a>
         <a class="button" href="/suites/{{ suite.suite_id }}/export">Export</a>
+        <form action="/suites/{{ suite.suite_id }}/delete" method="post">
+          <button class="button danger" type="submit" hx-confirm="Delete {{ suite.name }}? Run history and artifacts will remain.">Delete</button>
+        </form>
       </div>
     </article>
     {% endfor %}
   </div>
   {% else %}
-  <p class="empty">No suites yet.</p>
+  <div class="empty-state">
+    <h2>No suites yet</h2>
+    <p>Create one with the guided form, or paste YAML directly.</p>
+    <div class="actions">
+      <a class="button primary" href="/suites/builder">Guided Builder</a>
+      <a class="button" href="/suites/new">YAML Editor</a>
+    </div>
+  </div>
   {% endif %}
 </section>
 {% endblock %}

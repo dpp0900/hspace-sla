@@ -14,11 +14,11 @@
     <span>Duration</span>
     <strong>{{ run.duration_ms }} ms</strong>
   </div>
-  <div class="metric fail">
+  <div class="metric {{ 'fail' if run.assertion_failures else 'pass' }}">
     <span>Assertion Failures</span>
     <strong>{{ run.assertion_failures }}</strong>
   </div>
-  <div class="metric fail">
+  <div class="metric {{ 'fail' if run.metric_violations else 'pass' }}">
     <span>Metric Violations</span>
     <strong>{{ run.metric_violations }}</strong>
   </div>

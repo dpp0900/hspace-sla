@@ -90,6 +90,10 @@ class WebSmokeTests(unittest.TestCase):
             self.assertEqual(response.status_code, 303)
             self.assertEqual(store.load_suite("builder-suite").name, "Builder Suite")
 
+            response = client.post("/suites/builder-suite/delete", follow_redirects=False)
+            self.assertEqual(response.status_code, 303)
+            self.assertIsNone(store.get_suite_summary("builder-suite"))
+
 
 if __name__ == "__main__":
     unittest.main()

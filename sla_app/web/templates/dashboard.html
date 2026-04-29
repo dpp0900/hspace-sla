@@ -6,7 +6,10 @@
     <p class="eyebrow">Local Android SLA</p>
     <h1>Dashboard</h1>
   </div>
-  <a class="button primary" href="/suites/builder">New Suite</a>
+  <div class="actions">
+    <a class="button primary" href="/suites/builder">New Suite</a>
+    <a class="button" href="/suites">Manage Suites</a>
+  </div>
 </section>
 
 <section class="metric-grid">
@@ -56,7 +59,14 @@
     </table>
   </div>
   {% else %}
-  <p class="empty">No runs yet.</p>
+  <div class="empty-state compact">
+    <h2>No runs yet</h2>
+    <p>Create a suite, then run it to see SLA results here.</p>
+    <div class="actions">
+      <a class="button primary" href="/suites/builder">New Suite</a>
+      <a class="button" href="/suites">Test Suites</a>
+    </div>
+  </div>
   {% endif %}
 </section>
 {% endblock %}

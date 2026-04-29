@@ -65,6 +65,19 @@ class StorageTests(unittest.TestCase):
             self.assertEqual(summary.yaml_path, suite_path)
             self.assertFalse((store.suites_dir / "storage-suite.yaml").exists())
 
+    def test_deletes_suite_registration_and_owned_yaml_file(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            store = SqliteStore(tmp)
+            suite = suite_from_yaml_text(VALID_YAML)
+            summary = store.save_suite(suite, VALID_YAML)
+
+            self.assertTrue(summary.yaml_path.exists())
+            self.assertTrue(store.delete_suite(summary.suite_id))
+
+            self.assertIsNone(store.get_suite_summary(summary.suite_id))
+            self.assertFalse(summary.yaml_path.exists())
+            self.assertFalse(store.delete_suite(summary.suite_id))
+
 
 if __name__ == "__main__":
     unittest.main()

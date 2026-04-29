@@ -187,6 +187,12 @@ def create_app(base_dir: str | Path | None = None) -> FastAPI:
     async def export_suite(suite_id: str):
         return PlainTextResponse(_suite_yaml_or_404(store, suite_id), media_type="text/yaml")
 
+    @app.post("/suites/{suite_id}/delete")
+    async def delete_suite(suite_id: str):
+        if not store.delete_suite(suite_id):
+            raise HTTPException(status_code=404, detail="suite not found")
+        return RedirectResponse("/suites", status_code=303)
+
     @app.post("/suites/{suite_id}/runs")
     async def run_suite(suite_id: str):
         try:
