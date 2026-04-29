@@ -27,6 +27,7 @@ class LaunchConfig:
     app_package: str | None
     app_activity: str | None
     app_wait_activity: str | None
+    app_wait_package: str | None
     no_reset: bool
     boot_timeout: int
     server_timeout: int
@@ -123,6 +124,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="스플래시 화면이 있는 경우 대기할 activity 패턴",
     )
     parser.add_argument(
+        "--app-wait-package",
+        default=os.getenv("APP_WAIT_PACKAGE"),
+        help="앱 실행 후 다른 package 화면으로 전환될 수 있을 때 대기할 package 패턴",
+    )
+    parser.add_argument(
         "--no-reset",
         action="store_true",
         help="앱 데이터를 유지합니다.",
@@ -186,6 +192,7 @@ def parse_args(argv: Sequence[str] | None = None) -> LaunchConfig:
         app_package=args.app_package,
         app_activity=args.app_activity,
         app_wait_activity=args.app_wait_activity,
+        app_wait_package=args.app_wait_package,
         no_reset=args.no_reset,
         boot_timeout=args.boot_timeout,
         server_timeout=args.server_timeout,

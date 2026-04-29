@@ -83,6 +83,8 @@ class WebSmokeTests(unittest.TestCase):
                             "label": "HSPACE Test App",
                             "package": "com.hspace.testapp",
                             "activity": ".MainActivity",
+                            "app_wait_activity": "*",
+                            "app_wait_package": "*",
                         }
                     ],
                 },
@@ -90,6 +92,8 @@ class WebSmokeTests(unittest.TestCase):
                 response = client.get("/android/installed-apps")
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.json()["apps"][0]["package"], "com.hspace.testapp")
+            self.assertEqual(response.json()["apps"][0]["app_wait_activity"], "*")
+            self.assertEqual(response.json()["apps"][0]["app_wait_package"], "*")
 
             class FakeAdapter:
                 def inspect_elements(self):
@@ -109,6 +113,27 @@ class WebSmokeTests(unittest.TestCase):
                 response = client.get("/android/elements", params={"target_mode": "apk", "apk": "app.apk"})
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.json()["elements"][0]["selector"], "id=com.example:id/email")
+
+            captured_targets = []
+
+            def fake_inspect_target(app_target, source_path=None):
+                captured_targets.append(app_target)
+                return {"elements": []}
+
+            with patch("sla_app.web.app._inspect_app_target_elements", side_effect=fake_inspect_target):
+                response = client.get(
+                    "/android/elements",
+                    params={
+                        "target_mode": "installed",
+                        "app_package": "com.google.android.calendar",
+                        "app_activity": "com.android.calendar.AllInOneActivity",
+                        "app_wait_activity": "com.android.calendar.AllInOneActivity",
+                        "app_wait_package": "com.google.android.calendar",
+                    },
+                )
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(captured_targets[0].app_wait_activity, "*")
+            self.assertEqual(captured_targets[0].app_wait_package, "*")
 
             response = client.post(
                 f"/suites/{summary.suite_id}/edit/helper",
@@ -177,6 +202,7 @@ class WebSmokeTests(unittest.TestCase):
                     "app_package": "com.hspace.testapp",
                     "app_activity": ".MainActivity",
                     "app_wait_activity": ".MainActivity",
+                    "app_wait_package": "com.hspace.testapp",
                     "max_duration_ms": "30000",
                     "max_assertion_failures": "0",
                     "max_metric_violations": "0",
@@ -197,6 +223,7 @@ class WebSmokeTests(unittest.TestCase):
             installed_suite = store.load_suite("installed-suite")
             self.assertEqual(installed_suite.app.app_package, "com.hspace.testapp")
             self.assertEqual(installed_suite.app.app_activity, ".MainActivity")
+            self.assertEqual(installed_suite.app.app_wait_package, "com.hspace.testapp")
 
             response = client.post("/suites/builder-suite/delete", follow_redirects=False)
             self.assertEqual(response.status_code, 303)

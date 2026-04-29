@@ -9,7 +9,7 @@ from .config import parse_args
 from .console import log
 from .paths import platform_executable_name, sdk_tool_path
 from .process import resolve_executable, resolve_sdk_root
-from .session import build_capabilities, create_driver
+from .session import build_capabilities, create_driver, launch_installed_app, requires_manual_installed_launch
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -28,6 +28,9 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         log("Appium 세션 생성 중...")
         driver = create_driver(config.appium_url, capabilities)
+        if requires_manual_installed_launch(config):
+            log("설치된 앱을 adb am start로 실행 중...")
+            launch_installed_app(adb_path, serial, config.app_package or "", config.app_activity or "")
 
         current_package = getattr(driver, "current_package", None)
         if callable(current_package):

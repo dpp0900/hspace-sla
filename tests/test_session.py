@@ -24,6 +24,7 @@ def _config(**overrides) -> LaunchConfig:
         "app_package": None,
         "app_activity": None,
         "app_wait_activity": None,
+        "app_wait_package": None,
         "no_reset": False,
         "boot_timeout": 240,
         "server_timeout": 45,
@@ -40,6 +41,7 @@ class SessionTests(unittest.TestCase):
 
         self.assertEqual(capabilities["app"], "/tmp/app.apk")
         self.assertTrue(capabilities["enforceAppInstall"])
+        self.assertNotIn("autoLaunch", capabilities)
 
     def test_installed_app_capabilities_do_not_force_install(self) -> None:
         capabilities = build_capabilities(
@@ -48,7 +50,22 @@ class SessionTests(unittest.TestCase):
         )
 
         self.assertEqual(capabilities["appPackage"], "com.example")
+        self.assertFalse(capabilities["autoLaunch"])
         self.assertNotIn("enforceAppInstall", capabilities)
+
+    def test_installed_app_wait_package_capability(self) -> None:
+        capabilities = build_capabilities(
+            _config(
+                app_package="com.example",
+                app_activity=".MainActivity",
+                app_wait_activity="*",
+                app_wait_package="*",
+            ),
+            "emulator-5554",
+        )
+
+        self.assertEqual(capabilities["appWaitActivity"], "*")
+        self.assertEqual(capabilities["appWaitPackage"], "*")
 
 
 if __name__ == "__main__":

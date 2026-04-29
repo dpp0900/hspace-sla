@@ -53,6 +53,7 @@ app:
   app_package: com.example.myapp
   app_activity: .MainActivity
   app_wait_activity: com.example.myapp.*
+  app_wait_package: com.example.myapp
   no_reset: true
 ```
 
@@ -65,6 +66,7 @@ app:
 | `app_package` | Conditional | string | 이미 설치된 앱의 package 이름입니다. |
 | `app_activity` | Conditional | string | 이미 설치된 앱의 launch activity입니다. |
 | `app_wait_activity` | No | string | splash activity가 있을 때 Appium `appWaitActivity`로 전달됩니다. |
+| `app_wait_package` | No | string | 앱 실행 후 다른 package 화면으로 전환될 수 있을 때 Appium `appWaitPackage`로 전달됩니다. Google 로그인/권한 화면까지 허용하려면 `*`를 사용할 수 있습니다. |
 | `no_reset` | No | boolean | `true`면 앱 데이터를 유지합니다. 기본값은 `false`입니다. |
 
 `apk` 상대 경로는 먼저 YAML 파일이 있는 디렉터리 기준으로 해석하고, 해당 파일이 없으면 현재 작업 디렉터리 기준으로 해석합니다.
@@ -351,6 +353,7 @@ app:
   app_package: com.example.myapp
   app_activity: .MainActivity
   app_wait_activity: com.example.myapp.*
+  app_wait_package: com.example.myapp
   no_reset: false
 thresholds:
   max_duration_ms: 20000

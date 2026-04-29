@@ -78,6 +78,10 @@
             <span>Wait activity</span>
             <input type="text" name="app_wait_activity" value="{{ builder.app_wait_activity }}">
           </label>
+          <label>
+            <span>Wait package</span>
+            <input type="text" name="app_wait_package" value="{{ builder.app_wait_package }}">
+          </label>
           <label class="checkbox-field">
             <input type="checkbox" name="no_reset" value="true" {{ 'checked' if builder.no_reset else '' }}>
             <span>Keep app data</span>
@@ -270,6 +274,7 @@
       const packageInput = document.querySelector("input[name='app_package']");
       const activityInput = document.querySelector("input[name='app_activity']");
       const waitActivityInput = document.querySelector("input[name='app_wait_activity']");
+      const waitPackageInput = document.querySelector("input[name='app_wait_package']");
       if (packageInput) {
         packageInput.value = app.package || "";
       }
@@ -277,7 +282,10 @@
         activityInput.value = app.activity || "";
       }
       if (waitActivityInput) {
-        waitActivityInput.value = app.activity || "";
+        waitActivityInput.value = app.app_wait_activity || "*";
+      }
+      if (waitPackageInput) {
+        waitPackageInput.value = app.app_wait_package || "*";
       }
 
       const suiteNameInput = document.querySelector("input[name='suite_name']");
@@ -321,6 +329,7 @@
       url.searchParams.set("app_package", document.querySelector("input[name='app_package']")?.value || "");
       url.searchParams.set("app_activity", document.querySelector("input[name='app_activity']")?.value || "");
       url.searchParams.set("app_wait_activity", document.querySelector("input[name='app_wait_activity']")?.value || "");
+      url.searchParams.set("app_wait_package", document.querySelector("input[name='app_wait_package']")?.value || "");
       url.searchParams.set("no_reset", document.querySelector("input[name='no_reset']")?.checked ? "true" : "false");
       return url;
     }

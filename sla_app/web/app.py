@@ -319,6 +319,7 @@ def create_app(base_dir: str | Path | None = None) -> FastAPI:
         app_package: str = "",
         app_activity: str = "",
         app_wait_activity: str = "",
+        app_wait_package: str = "",
         no_reset: bool = False,
     ):
         try:
@@ -328,13 +329,14 @@ def create_app(base_dir: str | Path | None = None) -> FastAPI:
                 app_package=app_package,
                 app_activity=app_activity,
                 app_wait_activity=app_wait_activity,
+                app_wait_package=app_wait_package,
                 no_reset=no_reset,
             )
             return _inspect_app_target_elements(app_target)
         except (SuiteValidationError, ValueError) as exc:
             return JSONResponse({"error": str(exc), "elements": []}, status_code=400)
         except Exception as exc:  # noqa: BLE001 - surface Android/Appium scan errors to the UI.
-            return JSONResponse({"error": str(exc), "elements": []}, status_code=500)
+            return JSONResponse({"error": _friendly_appium_error(exc), "elements": []}, status_code=500)
 
     @app.get("/suites/{suite_id}/elements")
     async def inspect_suite_elements(suite_id: str):
@@ -346,7 +348,7 @@ def create_app(base_dir: str | Path | None = None) -> FastAPI:
         try:
             return _inspect_app_target_elements(suite.app, source_path=suite.source_path)
         except Exception as exc:  # noqa: BLE001 - surface Appium/device scan errors to the UI.
-            return JSONResponse({"error": str(exc), "elements": []}, status_code=500)
+            return JSONResponse({"error": _friendly_appium_error(exc), "elements": []}, status_code=500)
 
     @app.get("/suites/{suite_id}/export", response_class=PlainTextResponse)
     async def export_suite(suite_id: str):
@@ -486,6 +488,7 @@ def _app_target_from_scan_request(
     app_package: str,
     app_activity: str,
     app_wait_activity: str,
+    app_wait_package: str,
     no_reset: bool,
 ) -> AppTarget:
     if target_mode == "installed":
@@ -495,7 +498,8 @@ def _app_target_from_scan_request(
             platform="android",
             app_package=app_package.strip(),
             app_activity=app_activity.strip(),
-            app_wait_activity=app_wait_activity.strip() or None,
+            app_wait_activity="*",
+            app_wait_package="*",
             no_reset=no_reset,
         )
 
@@ -537,6 +541,7 @@ def _android_discovery_config() -> LaunchConfig:
         app_package=None,
         app_activity=None,
         app_wait_activity=None,
+        app_wait_package=None,
         no_reset=True,
         boot_timeout=int(os.getenv("ANDROID_BOOT_TIMEOUT", "240")),
         server_timeout=int(os.getenv("APPIUM_SERVER_TIMEOUT", "45")),
@@ -551,6 +556,19 @@ def _system_exit_message(exc: SystemExit) -> str:
     if exc.code:
         return str(exc.code)
     return "launcher exited"
+
+
+def _friendly_appium_error(exc: Exception) -> str:
+    message = str(exc).strip()
+    if "Stacktrace:" in message:
+        message = message.split("Stacktrace:", 1)[0].strip()
+    if "Original error:" in message and "Cannot start" in message:
+        return (
+            "Could not start the selected app. The app may open through another activity; "
+            "keep Wait activity and Wait package as * or choose a different launch activity. "
+            f"Details: {message}"
+        )
+    return message or exc.__class__.__name__
 
 
 def _import_existing_suites(store: SqliteStore) -> None:
@@ -570,6 +588,7 @@ def _default_builder_state() -> dict[str, object]:
         "app_package": "",
         "app_activity": "",
         "app_wait_activity": "",
+        "app_wait_package": "",
         "no_reset": False,
         "max_duration_ms": "30000",
         "max_assertion_failures": "0",
@@ -596,6 +615,7 @@ def _builder_state_from_suite(suite: TestSuite) -> dict[str, object]:
         "app_package": suite.app.app_package or "",
         "app_activity": suite.app.app_activity or "",
         "app_wait_activity": suite.app.app_wait_activity or "",
+        "app_wait_package": suite.app.app_wait_package or "",
         "no_reset": suite.app.no_reset,
         "max_duration_ms": _text_or_empty(suite.thresholds.max_duration_ms),
         "max_assertion_failures": str(suite.thresholds.max_assertion_failures),
@@ -677,6 +697,7 @@ def _builder_state_from_form(form) -> dict[str, object]:
         "app_package": _form_value(form, "app_package"),
         "app_activity": _form_value(form, "app_activity"),
         "app_wait_activity": _form_value(form, "app_wait_activity"),
+        "app_wait_package": _form_value(form, "app_wait_package"),
         "no_reset": form.get("no_reset") == "true",
         "max_duration_ms": _form_value(form, "max_duration_ms"),
         "max_assertion_failures": _form_value(form, "max_assertion_failures", "0"),
@@ -696,6 +717,8 @@ def _builder_state_to_yaml(builder: dict[str, object]) -> str:
         app_data["app_activity"] = str(builder.get("app_activity") or "")
         if builder.get("app_wait_activity"):
             app_data["app_wait_activity"] = str(builder["app_wait_activity"])
+        if builder.get("app_wait_package"):
+            app_data["app_wait_package"] = str(builder["app_wait_package"])
         if builder.get("no_reset"):
             app_data["no_reset"] = True
     else:

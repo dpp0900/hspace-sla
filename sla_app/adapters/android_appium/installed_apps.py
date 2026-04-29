@@ -10,11 +10,15 @@ class InstalledApp:
     package: str
     activity: str
     label: str
+    app_wait_activity: str = "*"
+    app_wait_package: str = "*"
 
     def to_dict(self) -> dict[str, str]:
         return {
             "package": self.package,
             "activity": self.activity,
+            "app_wait_activity": self.app_wait_activity,
+            "app_wait_package": self.app_wait_package,
             "label": self.label,
         }
 

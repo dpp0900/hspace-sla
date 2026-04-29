@@ -368,6 +368,17 @@ SLA_WEB_PORT=8010 ./.venv/bin/python run_sla_web.py
   --app-wait-activity "com.example.myapp.*"
 ```
 
+앱 실행 직후 Google 로그인, 권한, 시스템 설정처럼 다른 package 화면으로 넘어가는 앱은 package 대기도 풀어야 합니다.
+
+```bash
+./.venv/bin/python launch_android_app.py \
+  --start-appium \
+  --app-package com.google.android.calendar \
+  --app-activity com.android.calendar.AllInOneActivity \
+  --app-wait-activity "*" \
+  --app-wait-package "*"
+```
+
 ## SLA 테스트 스위트 YAML
 
 첫 MVP에서 지원하는 액션은 아래 9개입니다.
@@ -418,6 +429,8 @@ SLA 판정은 시나리오 실행 성공 여부, `duration_ms`, assertion 실패
 - `--npm-path`: npm 경로 직접 지정
 - `--appium-main-script`: Appium `main.js` 경로 직접 지정
 - `--no-reset`: 앱 데이터를 유지
+- `--app-wait-activity`: 실행 후 대기할 activity 패턴 지정
+- `--app-wait-package`: 실행 후 대기할 package 패턴 지정
 - `--launch-wait 10`: 앱 실행 후 10초 유지
 - `--keep-appium-running`: 스크립트가 띄운 Appium 서버를 종료하지 않음
 

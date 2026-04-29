@@ -11,7 +11,12 @@ from sla_launcher.appium_server import maybe_start_appium
 from sla_launcher.config import LaunchConfig
 from sla_launcher.paths import default_sdk_root, platform_executable_name, sdk_tool_path
 from sla_launcher.process import resolve_executable, resolve_sdk_root
-from sla_launcher.session import build_capabilities, create_driver
+from sla_launcher.session import (
+    build_capabilities,
+    create_driver,
+    launch_installed_app,
+    requires_manual_installed_launch,
+)
 
 from .inspector import extract_ui_elements
 
@@ -42,6 +47,13 @@ class AndroidAppiumAdapter:
         self.appium_service = maybe_start_appium(self.config)
         capabilities = build_capabilities(self.config, serial)
         self.driver = create_driver(self.config.appium_url, capabilities)
+        if requires_manual_installed_launch(self.config):
+            launch_installed_app(
+                adb_path,
+                serial,
+                self.config.app_package or "",
+                self.config.app_activity or "",
+            )
 
     def tap(self, step: ActionStep) -> None:
         self._element(step).click()
@@ -152,6 +164,7 @@ def _launch_config_from_target(target: AppTarget, source_path: Path | None) -> L
         app_package=target.app_package,
         app_activity=target.app_activity,
         app_wait_activity=target.app_wait_activity,
+        app_wait_package=target.app_wait_package,
         no_reset=target.no_reset,
         boot_timeout=int(os.getenv("ANDROID_BOOT_TIMEOUT", "240")),
         server_timeout=int(os.getenv("APPIUM_SERVER_TIMEOUT", "45")),

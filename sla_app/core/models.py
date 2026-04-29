@@ -101,6 +101,7 @@ class AppTarget:
     app_package: str | None = None
     app_activity: str | None = None
     app_wait_activity: str | None = None
+    app_wait_package: str | None = None
     no_reset: bool = False
 
     @classmethod
@@ -111,12 +112,13 @@ class AppTarget:
             app_package=_optional_str(data.get("app_package")),
             app_activity=_optional_str(data.get("app_activity")),
             app_wait_activity=_optional_str(data.get("app_wait_activity")),
+            app_wait_package=_optional_str(data.get("app_wait_package")),
             no_reset=bool(data.get("no_reset", False)),
         )
 
     def to_dict(self) -> dict[str, Any]:
         data: dict[str, Any] = {"platform": self.platform}
-        for key in ("apk", "app_package", "app_activity", "app_wait_activity"):
+        for key in ("apk", "app_package", "app_activity", "app_wait_activity", "app_wait_package"):
             value = getattr(self, key)
             if value:
                 data[key] = value

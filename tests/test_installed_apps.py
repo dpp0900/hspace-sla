@@ -23,7 +23,11 @@ class InstalledAppsTests(unittest.TestCase):
 
         hspace = next(app for app in apps if app.package == "com.hspace.testapp")
         self.assertEqual(hspace.activity, ".MainActivity")
+        self.assertEqual(hspace.app_wait_activity, "*")
+        self.assertEqual(hspace.app_wait_package, "*")
         self.assertEqual(hspace.label, "HSPACE Test App")
+        self.assertEqual(hspace.to_dict()["app_wait_activity"], "*")
+        self.assertEqual(hspace.to_dict()["app_wait_package"], "*")
 
 
 if __name__ == "__main__":
