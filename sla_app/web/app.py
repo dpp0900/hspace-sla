@@ -188,6 +188,16 @@ def create_app(base_dir: str | Path | None = None) -> FastAPI:
             },
         )
 
+    @app.get("/guide", response_class=HTMLResponse)
+    async def yaml_guide(request: Request):
+        return templates.TemplateResponse(
+            request,
+            "guide.html",
+            {
+                "active": "guide",
+            },
+        )
+
     @app.get("/settings", response_class=HTMLResponse)
     async def settings(request: Request):
         sdk_root = os.getenv("ANDROID_SDK_ROOT") or os.getenv("ANDROID_HOME") or str(default_sdk_root())

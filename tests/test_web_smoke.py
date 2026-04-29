@@ -54,7 +54,7 @@ class WebSmokeTests(unittest.TestCase):
             )
 
             client = TestClient(app)
-            for path in ("/", "/suites", "/runs/run-web", "/settings"):
+            for path in ("/", "/suites", "/runs/run-web", "/guide", "/settings"):
                 response = client.get(path)
                 self.assertEqual(response.status_code, 200, path)
 

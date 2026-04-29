@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+{% block title %}YAML Guide · SLA Test Runner{% endblock %}
+{% block content %}
+<section class="hero-band">
+  <div>
+    <p class="eyebrow">Reference</p>
+    <h1>YAML Guide</h1>
+  </div>
+  <a class="button primary" href="/suites/new">New Suite</a>
+</section>
+
+<section class="guide-layout">
+  <aside class="guide-toc">
+    <a href="#structure">Structure</a>
+    <a href="#app">App Target</a>
+    <a href="#thresholds">Thresholds</a>
+    <a href="#selectors">Selectors</a>
+    <a href="#actions">Actions</a>
+    <a href="#examples">Examples</a>
+    <a href="#validation">Validation</a>
+  </aside>
+
+  <div class="guide-content">
+    <section id="structure" class="panel guide-section">
+      <div class="section-head">
+        <h2>Basic Structure</h2>
+      </div>
+      <p>현재 MVP는 Android Appium 실행만 지원합니다. YAML은 suite metadata, app target, SLA thresholds, scenarios로 구성됩니다.</p>
+      <pre><code>name: Android Smoke
+app:
+  platform: android
+  apk: test-apk/build/hspace-test-app-debug.apk
+thresholds:
+  max_duration_ms: 30000
+  max_assertion_failures: 0
+  max_metric_violations: 0
+scenarios:
+  - name: launch and capture
+    steps:
+      - action: launch_app
+      - action: wait
+        timeout_ms: 1000
+      - action: screenshot
+        name: launch</code></pre>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Field</th>
+              <th>Required</th>
+              <th>What it does</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><code>name</code></td><td>Yes</td><td>Suite 이름입니다. 웹 UI와 결과에 표시됩니다.</td></tr>
+            <tr><td><code>app</code></td><td>Yes</td><td>Android 실행 대상입니다.</td></tr>
+            <tr><td><code>thresholds</code></td><td>No</td><td>Suite 전체 SLA 기준입니다.</td></tr>
+            <tr><td><code>scenarios</code></td><td>Yes</td><td>실행할 scenario 목록입니다. 최소 1개가 필요합니다.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="app" class="panel guide-section">
+      <div class="section-head">
+        <h2>App Target</h2>
+      </div>
+      <div class="guide-two-col">
+        <div>
+          <h3>APK install</h3>
+          <pre><code>app:
+  platform: android
+  apk: test-apk/build/hspace-test-app-debug.apk</code></pre>
+        </div>
+        <div>
+          <h3>Installed app</h3>
+          <pre><code>app:
+  platform: android
+  app_package: com.example.myapp
+  app_activity: .MainActivity
+  app_wait_activity: com.example.myapp.*
+  no_reset: true</code></pre>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Field</th>
+              <th>Required</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><code>platform</code></td><td>No</td><td>기본값은 <code>android</code>입니다. 현재 다른 platform은 거부됩니다.</td></tr>
+            <tr><td><code>apk</code></td><td>Conditional</td><td>설치 후 실행할 APK 경로입니다.</td></tr>
+            <tr><td><code>app_package</code></td><td>Conditional</td><td>이미 설치된 앱의 package 이름입니다.</td></tr>
+            <tr><td><code>app_activity</code></td><td>Conditional</td><td>이미 설치된 앱의 launch activity입니다.</td></tr>
+            <tr><td><code>app_wait_activity</code></td><td>No</td><td>Splash activity가 있을 때 Appium에 전달됩니다.</td></tr>
+            <tr><td><code>no_reset</code></td><td>No</td><td><code>true</code>면 앱 데이터를 유지합니다.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="thresholds" class="panel guide-section">
+      <div class="section-head">
+        <h2>Thresholds</h2>
+      </div>
+      <p><code>thresholds</code>는 suite 루트와 scenario 안에 둘 수 있습니다.</p>
+      <pre><code>thresholds:
+  max_duration_ms: 30000
+  max_assertion_failures: 0
+  max_metric_violations: 0
+  required_assertions: 1
+  metrics:
+    memory_mb:
+      max: 256</code></pre>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Field</th>
+              <th>Default</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><code>max_duration_ms</code></td><td>none</td><td>Scenario 최대 실행 시간입니다.</td></tr>
+            <tr><td><code>max_assertion_failures</code></td><td><code>0</code></td><td>허용할 assertion 실패 수입니다.</td></tr>
+            <tr><td><code>max_metric_violations</code></td><td><code>0</code></td><td>허용할 metric 위반 수입니다.</td></tr>
+            <tr><td><code>required_assertions</code></td><td><code>0</code></td><td>성공해야 하는 assertion step 최소 개수입니다.</td></tr>
+            <tr><td><code>metrics</code></td><td><code>{}</code></td><td>수집 metric에 적용할 <code>min</code>/<code>max</code> 기준입니다.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="selectors" class="panel guide-section">
+      <div class="section-head">
+        <h2>Selectors</h2>
+      </div>
+      <p><code>tap</code>, <code>input</code>, <code>assert_exists</code>에서 사용할 수 있습니다. <code>text</code>와 <code>selector</code>를 같이 넣으면 현재 Android 어댑터는 <code>text</code>를 우선합니다.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Selector</th>
+              <th>Locator</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><code>id=com.example:id/login</code></td><td>Appium ID</td></tr>
+            <tr><td><code>resource-id=com.example:id/login</code></td><td>Appium ID</td></tr>
+            <tr><td><code>accessibility_id=Login</code></td><td>Accessibility id</td></tr>
+            <tr><td><code>accessibility-id=Login</code></td><td>Accessibility id</td></tr>
+            <tr><td><code>a11y=Login</code></td><td>Accessibility id</td></tr>
+            <tr><td><code>xpath=//android.widget.Button[@text="Login"]</code></td><td>XPath</td></tr>
+            <tr><td><code>uiautomator=new UiSelector().text("Login")</code></td><td>Android UIAutomator</td></tr>
+            <tr><td><code>android_uiautomator=new UiSelector().text("Login")</code></td><td>Android UIAutomator</td></tr>
+            <tr><td><code>/hierarchy/...</code></td><td>XPath</td></tr>
+            <tr><td><code>com.example:id/login</code></td><td>Prefix가 없으면 Appium ID</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="actions" class="panel guide-section">
+      <div class="section-head">
+        <h2>Actions</h2>
+      </div>
+      <div class="action-grid">
+        <article class="action-card">
+          <h3><code>launch_app</code></h3>
+          <p>앱 실행 세션을 시작합니다. 에뮬레이터 부팅, Appium 연결, driver 생성이 여기서 일어납니다.</p>
+          <pre><code>- action: launch_app</code></pre>
+        </article>
+        <article class="action-card">
+          <h3><code>tap</code></h3>
+          <p><code>selector</code> 또는 <code>text</code>로 요소를 찾아 탭합니다.</p>
+          <pre><code>- action: tap
+  selector: id=com.example:id/login
+  timeout_ms: 5000</code></pre>
+        </article>
+        <article class="action-card">
+          <h3><code>input</code></h3>
+          <p><code>selector</code>로 요소를 찾아 <code>value</code>를 입력합니다.</p>
+          <pre><code>- action: input
+  selector: id=com.example:id/email
+  value: user@example.com</code></pre>
+        </article>
+        <article class="action-card">
+          <h3><code>wait</code></h3>
+          <p><code>timeout_ms</code>만큼 대기합니다. 기본값은 1000ms입니다.</p>
+          <pre><code>- action: wait
+  timeout_ms: 1000</code></pre>
+        </article>
+        <article class="action-card">
+          <h3><code>assert_text</code></h3>
+          <p>현재 page source에 <code>text</code>가 포함되어 있는지 확인합니다.</p>
+          <pre><code>- action: assert_text
+  text: Welcome</code></pre>
+        </article>
+        <article class="action-card">
+          <h3><code>assert_exists</code></h3>
+          <p><code>selector</code> 또는 <code>text</code>로 요소 존재 여부를 확인합니다.</p>
+          <pre><code>- action: assert_exists
+  selector: id=com.example:id/home</code></pre>
+        </article>
+        <article class="action-card">
+          <h3><code>screenshot</code></h3>
+          <p>현재 화면을 <code>artifacts/&lt;run_id&gt;/</code> 아래 PNG로 저장합니다.</p>
+          <pre><code>- action: screenshot
+  name: after-login</code></pre>
+        </article>
+        <article class="action-card">
+          <h3><code>collect_metrics</code></h3>
+          <p>현재 앱의 기술 지표를 수집합니다. 현재 기본 metric은 <code>memory_mb</code>입니다.</p>
+          <pre><code>- action: collect_metrics</code></pre>
+        </article>
+        <article class="action-card">
+          <h3><code>metric_check</code></h3>
+          <p>이미 수집된 metric이 <code>min</code>/<code>max</code> 범위 안에 있는지 확인합니다.</p>
+          <pre><code>- action: metric_check
+  metric: memory_mb
+  max: 256</code></pre>
+        </article>
+      </div>
+    </section>
+
+    <section id="examples" class="panel guide-section">
+      <div class="section-head">
+        <h2>Complete Examples</h2>
+      </div>
+      <h3>Installed app with assertions</h3>
+      <pre><code>name: Login Smoke
+app:
+  platform: android
+  app_package: com.example.myapp
+  app_activity: .MainActivity
+  app_wait_activity: com.example.myapp.*
+  no_reset: false
+thresholds:
+  max_duration_ms: 20000
+  required_assertions: 2
+scenarios:
+  - name: login screen
+    steps:
+      - action: launch_app
+      - action: assert_exists
+        selector: id=com.example.myapp:id/email
+      - action: assert_text
+        text: Login
+      - action: screenshot
+        name: login-screen</code></pre>
+
+      <h3>Metric check</h3>
+      <pre><code>name: Memory SLA
+app:
+  platform: android
+  apk: test-apk/build/hspace-test-app-debug.apk
+thresholds:
+  max_duration_ms: 30000
+  max_metric_violations: 0
+  metrics:
+    memory_mb:
+      max: 256
+scenarios:
+  - name: launch memory
+    steps:
+      - action: launch_app
+      - action: wait
+        timeout_ms: 1000
+      - action: collect_metrics
+      - action: metric_check
+        metric: memory_mb
+        max: 256</code></pre>
+    </section>
+
+    <section id="validation" class="panel guide-section">
+      <div class="section-head">
+        <h2>Validation Rules</h2>
+      </div>
+      <ul class="guide-list">
+        <li><code>name</code>, <code>app</code>, <code>scenarios</code>가 필요합니다.</li>
+        <li><code>app.platform</code>은 현재 <code>android</code>여야 합니다.</li>
+        <li><code>app.apk</code> 또는 <code>app_package</code> + <code>app_activity</code>가 필요합니다.</li>
+        <li>각 scenario는 <code>name</code>과 1개 이상의 <code>steps</code>가 필요합니다.</li>
+        <li><code>tap</code>은 <code>selector</code> 또는 <code>text</code>가 필요합니다.</li>
+        <li><code>input</code>은 <code>selector</code>와 <code>value</code>가 필요합니다.</li>
+        <li><code>assert_text</code>는 <code>text</code>가 필요합니다.</li>
+        <li><code>assert_exists</code>는 <code>selector</code> 또는 <code>text</code>가 필요합니다.</li>
+        <li><code>metric_check</code>는 <code>metric</code>과 <code>min</code>/<code>max</code> 중 하나 이상이 필요합니다.</li>
+      </ul>
+      <div class="guide-note">
+        현재 제한: Android만 지원하며, browser/iOS/device farm, 자유 Python 코드, swipe/scroll/orientation 액션은 아직 제공하지 않습니다.
+      </div>
+    </section>
+  </div>
+</section>
+{% endblock %}
