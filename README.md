@@ -322,6 +322,8 @@ SLA_WEB_PORT=8010 ./.venv/bin/python run_sla_web.py
 
 웹앱은 기본적으로 현재 작업 디렉터리에 `sla_app.db`, `suites/`, `artifacts/`를 사용합니다. 다른 위치를 쓰려면 `SLA_APP_HOME`을 지정합니다.
 
+비전공자는 `Test Suites` 화면의 `Guided Builder`로 suite를 만들 수 있고, 개발자는 `YAML Editor` 또는 `suites/*.yaml` 파일을 직접 수정할 수 있습니다.
+
 ### CLI로 APK 실행
 
 ```bash

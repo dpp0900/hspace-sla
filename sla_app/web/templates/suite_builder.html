@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% block title %}Guided Builder · SLA Test Runner{% endblock %}
+{% block content %}
+<section class="hero-band">
+  <div>
+    <p class="eyebrow">No-code suite</p>
+    <h1>Guided Builder</h1>
+  </div>
+  <div class="actions">
+    <a class="button" href="/guide" target="_blank" rel="noreferrer">YAML Guide</a>
+    <a class="button" href="/suites/new">YAML Editor</a>
+    <a class="button" href="/suites">Back</a>
+  </div>
+</section>
+
+{% if error %}
+<div class="alert">{{ error }}</div>
+{% endif %}
+
+<form class="builder-form" action="/suites/builder" method="post">
+  <section class="builder-grid">
+    <div class="panel builder-panel">
+      <div class="section-head">
+        <h2>Suite</h2>
+      </div>
+      <div class="field-grid">
+        <label>
+          <span>Suite name</span>
+          <input type="text" name="suite_name" value="{{ builder.suite_name }}" required>
+        </label>
+        <label>
+          <span>Scenario name</span>
+          <input type="text" name="scenario_name" value="{{ builder.scenario_name }}" required>
+        </label>
+      </div>
+    </div>
+
+    <div class="panel builder-panel">
+      <div class="section-head">
+        <h2>Target</h2>
+      </div>
+      <div class="segmented">
+        <label>
+          <input type="radio" name="target_mode" value="apk" {{ 'checked' if builder.target_mode != 'installed' else '' }}>
+          <span>APK</span>
+        </label>
+        <label>
+          <input type="radio" name="target_mode" value="installed" {{ 'checked' if builder.target_mode == 'installed' else '' }}>
+          <span>Installed app</span>
+        </label>
+      </div>
+      <div class="target-fields" data-target-mode="apk">
+        <label>
+          <span>APK path</span>
+          <input type="text" name="apk" value="{{ builder.apk }}">
+        </label>
+      </div>
+      <div class="target-fields" data-target-mode="installed">
+        <div class="field-grid">
+          <label>
+            <span>Package</span>
+            <input type="text" name="app_package" value="{{ builder.app_package }}">
+          </label>
+          <label>
+            <span>Activity</span>
+            <input type="text" name="app_activity" value="{{ builder.app_activity }}">
+          </label>
+          <label>
+            <span>Wait activity</span>
+            <input type="text" name="app_wait_activity" value="{{ builder.app_wait_activity }}">
+          </label>
+          <label class="checkbox-field">
+            <input type="checkbox" name="no_reset" value="true" {{ 'checked' if builder.no_reset else '' }}>
+            <span>Keep app data</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel builder-panel">
+      <div class="section-head">
+        <h2>SLA</h2>
+      </div>
+      <div class="field-grid compact">
+        <label>
+          <span>Max duration ms</span>
+          <input type="number" min="0" name="max_duration_ms" value="{{ builder.max_duration_ms }}">
+        </label>
+        <label>
+          <span>Required assertions</span>
+          <input type="number" min="0" name="required_assertions" value="{{ builder.required_assertions }}">
+        </label>
+        <label>
+          <span>Assertion failures</span>
+          <input type="number" min="0" name="max_assertion_failures" value="{{ builder.max_assertion_failures }}">
+        </label>
+        <label>
+          <span>Metric violations</span>
+          <input type="number" min="0" name="max_metric_violations" value="{{ builder.max_metric_violations }}">
+        </label>
+        <label>
+          <span>Memory max MB</span>
+          <input type="number" min="0" step="0.1" name="memory_mb_max" value="{{ builder.memory_mb_max }}">
+        </label>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel builder-panel">
+    <div class="section-head">
+      <h2>Steps</h2>
+      <button class="button" type="button" data-add-step>Add Step</button>
+    </div>
+    <div class="step-list" data-step-list>
+      {% for step in builder.steps %}
+      {% include "suite_builder_step.html" %}
+      {% endfor %}
+    </div>
+    <div class="form-actions">
+      <button class="button primary" type="submit">Save Suite</button>
+    </div>
+  </section>
+</form>
+
+<template data-step-template>
+  {% set step = {"action": "tap", "selector": "", "text": "", "value": "", "timeout_ms": "", "name": "", "metric": "", "min": "", "max": ""} %}
+  {% include "suite_builder_step.html" %}
+</template>
+
+<script>
+  (() => {
+    const fieldsByAction = {
+      launch_app: [],
+      tap: ["selector", "text", "timeout"],
+      input: ["selector", "value", "timeout"],
+      wait: ["timeout"],
+      assert_text: ["text"],
+      assert_exists: ["selector", "text", "timeout"],
+      screenshot: ["name"],
+      collect_metrics: [],
+      metric_check: ["metric", "min", "max"],
+    };
+
+    const targetFields = document.querySelectorAll("[data-target-mode]");
+    const targetRadios = document.querySelectorAll("input[name='target_mode']");
+    const stepList = document.querySelector("[data-step-list]");
+    const template = document.querySelector("[data-step-template]");
+
+    function syncTarget() {
+      const selected = document.querySelector("input[name='target_mode']:checked")?.value || "apk";
+      targetFields.forEach((field) => {
+        field.hidden = field.dataset.targetMode !== selected;
+      });
+    }
+
+    function syncStep(card) {
+      const action = card.querySelector("[name='step_action']").value;
+      const enabledFields = fieldsByAction[action] || [];
+      card.querySelectorAll("[data-step-field]").forEach((field) => {
+        field.hidden = !enabledFields.includes(field.dataset.stepField);
+      });
+    }
+
+    function syncAllSteps() {
+      document.querySelectorAll("[data-step-card]").forEach(syncStep);
+    }
+
+    targetRadios.forEach((radio) => radio.addEventListener("change", syncTarget));
+    stepList.addEventListener("change", (event) => {
+      if (event.target.matches("[name='step_action']")) {
+        syncStep(event.target.closest("[data-step-card]"));
+      }
+    });
+    stepList.addEventListener("click", (event) => {
+      const removeButton = event.target.closest("[data-remove-step]");
+      if (!removeButton) {
+        return;
+      }
+      const cards = stepList.querySelectorAll("[data-step-card]");
+      if (cards.length > 1) {
+        removeButton.closest("[data-step-card]").remove();
+      }
+    });
+    document.querySelector("[data-add-step]").addEventListener("click", () => {
+      stepList.append(template.content.cloneNode(true));
+      syncAllSteps();
+    });
+
+    syncTarget();
+    syncAllSteps();
+  })();
+</script>
+{% endblock %}

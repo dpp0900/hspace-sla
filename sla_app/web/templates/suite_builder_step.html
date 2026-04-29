@@ -1,0 +1,57 @@
+<article class="step-card" data-step-card>
+  <div class="step-card-head">
+    <label>
+      <span>Action</span>
+      <select name="step_action">
+        {% for value, label in [
+          ("launch_app", "Launch app"),
+          ("tap", "Tap"),
+          ("input", "Input"),
+          ("wait", "Wait"),
+          ("assert_text", "Assert text"),
+          ("assert_exists", "Assert exists"),
+          ("screenshot", "Screenshot"),
+          ("collect_metrics", "Collect metrics"),
+          ("metric_check", "Metric check")
+        ] %}
+        <option value="{{ value }}" {{ 'selected' if step.action == value else '' }}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button class="button icon-button" type="button" data-remove-step title="Remove step">&times;</button>
+  </div>
+  <div class="step-fields">
+    <label data-step-field="selector">
+      <span>Selector</span>
+      <input type="text" name="step_selector" value="{{ step.selector|default('', true) }}">
+    </label>
+    <label data-step-field="text">
+      <span>Text</span>
+      <input type="text" name="step_text" value="{{ step.text|default('', true) }}">
+    </label>
+    <label data-step-field="value">
+      <span>Value</span>
+      <input type="text" name="step_value" value="{{ step.value|default('', true) }}">
+    </label>
+    <label data-step-field="timeout">
+      <span>Timeout ms</span>
+      <input type="number" min="0" name="step_timeout_ms" value="{{ step.timeout_ms|default('', true) }}">
+    </label>
+    <label data-step-field="name">
+      <span>Name</span>
+      <input type="text" name="step_name" value="{{ step.name|default('', true) }}">
+    </label>
+    <label data-step-field="metric">
+      <span>Metric</span>
+      <input type="text" name="step_metric" value="{{ step.metric|default('memory_mb', true) }}">
+    </label>
+    <label data-step-field="min">
+      <span>Min</span>
+      <input type="number" step="0.1" name="step_min" value="{{ step.min|default('', true) }}">
+    </label>
+    <label data-step-field="max">
+      <span>Max</span>
+      <input type="number" step="0.1" name="step_max" value="{{ step.max|default('', true) }}">
+    </label>
+  </div>
+</article>

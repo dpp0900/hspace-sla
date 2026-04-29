@@ -316,6 +316,24 @@ textarea:focus {
   outline: 3px solid #d7ece8;
 }
 
+input,
+select {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--ink);
+  font: inherit;
+  min-height: 40px;
+  padding: 8px 10px;
+  width: 100%;
+}
+
+input:focus,
+select:focus {
+  border-color: var(--teal);
+  outline: 3px solid #d7ece8;
+}
+
 .reason-list {
   margin: 0;
   padding-left: 20px;
@@ -346,6 +364,141 @@ textarea:focus {
 
 .bad {
   color: var(--red);
+}
+
+.builder-form {
+  display: grid;
+  gap: 20px;
+}
+
+.builder-grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.builder-panel {
+  min-width: 0;
+}
+
+.field-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.field-grid.compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.field-grid label,
+.target-fields label,
+.step-card label {
+  display: grid;
+  gap: 7px;
+}
+
+.field-grid span,
+.target-fields span,
+.step-card span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.segmented {
+  background: #edf1ed;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 14px;
+  padding: 4px;
+}
+
+.segmented label {
+  cursor: pointer;
+  min-width: 0;
+  position: relative;
+}
+
+.segmented input {
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+.segmented span {
+  align-items: center;
+  border-radius: 6px;
+  color: var(--muted);
+  display: flex;
+  font-weight: 900;
+  justify-content: center;
+  min-height: 36px;
+  padding: 7px 10px;
+  text-align: center;
+}
+
+.segmented input:checked + span {
+  background: #ffffff;
+  color: var(--teal-dark);
+}
+
+.checkbox-field {
+  align-items: center;
+  display: flex !important;
+  flex-direction: row;
+  gap: 10px !important;
+  min-height: 40px;
+}
+
+.checkbox-field input {
+  height: 18px;
+  min-height: 0;
+  width: 18px;
+}
+
+.target-fields[hidden],
+.step-card [hidden] {
+  display: none;
+}
+
+.step-list {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.step-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+.step-card-head {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) 40px;
+}
+
+.step-fields {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.icon-button {
+  font-size: 20px;
+  font-weight: 900;
+  min-height: 40px;
+  padding: 0;
+  width: 40px;
 }
 
 .guide-layout {
@@ -497,6 +650,10 @@ textarea:focus {
 
   .metric-grid,
   .settings-grid,
+  .builder-grid,
+  .field-grid,
+  .field-grid.compact,
+  .step-fields,
   .guide-layout,
   .guide-two-col,
   .action-grid {

@@ -14,7 +14,8 @@ from fastapi.templating import Jinja2Templates
 
 from sla_app.adapters.android_appium import AndroidAppiumAdapter
 from sla_app.core.engine import ExecutionOptions, execute_suite
-from sla_app.core.yaml_loader import SuiteValidationError, suite_from_yaml_text
+from sla_app.core.models import ActionStep, AppTarget, MetricLimit, Scenario, SlaThresholds, TestSuite
+from sla_app.core.yaml_loader import SuiteValidationError, suite_from_yaml_text, suite_to_yaml
 from sla_app.storage import SqliteStore
 from sla_launcher.android import avd_home, detect_host_architecture, load_avd_definitions
 from sla_launcher.appium_server import is_appium_server_ready
@@ -79,6 +80,39 @@ def create_app(base_dir: str | Path | None = None) -> FastAPI:
                 "suites": store.list_suites(),
             },
         )
+
+    @app.get("/suites/builder", response_class=HTMLResponse)
+    async def suite_builder(request: Request):
+        return templates.TemplateResponse(
+            request,
+            "suite_builder.html",
+            {
+                "active": "suites",
+                "builder": _default_builder_state(),
+                "error": None,
+            },
+        )
+
+    @app.post("/suites/builder")
+    async def create_suite_from_builder(request: Request):
+        form = await request.form()
+        builder = _builder_state_from_form(form)
+        try:
+            yaml_text = _builder_state_to_yaml(builder)
+            suite = suite_from_yaml_text(yaml_text)
+        except (SuiteValidationError, ValueError) as exc:
+            return templates.TemplateResponse(
+                request,
+                "suite_builder.html",
+                {
+                    "active": "suites",
+                    "builder": builder,
+                    "error": str(exc),
+                },
+                status_code=400,
+            )
+        store.save_suite(suite, yaml_text)
+        return RedirectResponse("/suites", status_code=303)
 
     @app.get("/suites/new", response_class=HTMLResponse)
     async def new_suite(request: Request):
@@ -248,6 +282,188 @@ def _import_existing_suites(store: SqliteStore) -> None:
             store.register_suite_file(path.stem, suite, path)
         except SuiteValidationError:
             continue
+
+
+def _default_builder_state() -> dict[str, object]:
+    return {
+        "suite_name": "Android Smoke",
+        "target_mode": "apk",
+        "apk": "test-apk/build/hspace-test-app-debug.apk",
+        "app_package": "",
+        "app_activity": "",
+        "app_wait_activity": "",
+        "no_reset": False,
+        "max_duration_ms": "30000",
+        "max_assertion_failures": "0",
+        "max_metric_violations": "0",
+        "required_assertions": "",
+        "memory_mb_max": "",
+        "scenario_name": "launch and capture",
+        "steps": [
+            {"action": "launch_app"},
+            {"action": "wait", "timeout_ms": "1000"},
+            {"action": "screenshot", "name": "launch"},
+        ],
+    }
+
+
+def _builder_state_from_form(form) -> dict[str, object]:
+    actions = _form_list(form, "step_action")
+    steps: list[dict[str, str]] = []
+    for index, action in enumerate(actions):
+        action = action.strip()
+        if not action:
+            continue
+        steps.append(
+            {
+                "action": action,
+                "selector": _indexed_form_value(form, "step_selector", index),
+                "text": _indexed_form_value(form, "step_text", index),
+                "value": _indexed_form_value(form, "step_value", index),
+                "timeout_ms": _indexed_form_value(form, "step_timeout_ms", index),
+                "name": _indexed_form_value(form, "step_name", index),
+                "metric": _indexed_form_value(form, "step_metric", index),
+                "min": _indexed_form_value(form, "step_min", index),
+                "max": _indexed_form_value(form, "step_max", index),
+            }
+        )
+
+    return {
+        "suite_name": _form_value(form, "suite_name"),
+        "target_mode": _form_value(form, "target_mode", "apk"),
+        "apk": _form_value(form, "apk"),
+        "app_package": _form_value(form, "app_package"),
+        "app_activity": _form_value(form, "app_activity"),
+        "app_wait_activity": _form_value(form, "app_wait_activity"),
+        "no_reset": form.get("no_reset") == "true",
+        "max_duration_ms": _form_value(form, "max_duration_ms"),
+        "max_assertion_failures": _form_value(form, "max_assertion_failures", "0"),
+        "max_metric_violations": _form_value(form, "max_metric_violations", "0"),
+        "required_assertions": _form_value(form, "required_assertions"),
+        "memory_mb_max": _form_value(form, "memory_mb_max"),
+        "scenario_name": _form_value(form, "scenario_name"),
+        "steps": steps,
+    }
+
+
+def _builder_state_to_yaml(builder: dict[str, object]) -> str:
+    target_mode = str(builder.get("target_mode") or "apk")
+    app_data = {"platform": "android"}
+    if target_mode == "installed":
+        app_data["app_package"] = str(builder.get("app_package") or "")
+        app_data["app_activity"] = str(builder.get("app_activity") or "")
+        if builder.get("app_wait_activity"):
+            app_data["app_wait_activity"] = str(builder["app_wait_activity"])
+        if builder.get("no_reset"):
+            app_data["no_reset"] = True
+    else:
+        app_data["apk"] = str(builder.get("apk") or "")
+
+    metrics = {}
+    memory_mb_max = _optional_float_text(builder.get("memory_mb_max"))
+    if memory_mb_max is not None:
+        metrics["memory_mb"] = MetricLimit(max=memory_mb_max)
+
+    thresholds = SlaThresholds(
+        max_duration_ms=_optional_int_text(builder.get("max_duration_ms")),
+        max_assertion_failures=_int_text(builder.get("max_assertion_failures"), 0),
+        max_metric_violations=_int_text(builder.get("max_metric_violations"), 0),
+        required_assertions=_int_text(builder.get("required_assertions"), 0),
+        metrics=metrics,
+    )
+    steps = [
+        ActionStep.from_mapping(_step_mapping_from_builder(step))
+        for step in builder.get("steps", [])
+        if isinstance(step, dict)
+    ]
+    suite = TestSuite(
+        name=str(builder.get("suite_name") or "").strip(),
+        app=AppTarget.from_mapping(app_data),
+        thresholds=thresholds,
+        scenarios=[
+            Scenario(
+                name=str(builder.get("scenario_name") or "").strip(),
+                steps=steps,
+            )
+        ],
+    )
+    return suite_to_yaml(suite)
+
+
+def _step_mapping_from_builder(step: dict[str, str]) -> dict[str, object]:
+    action = str(step.get("action") or "")
+    mapping: dict[str, object] = {"action": action}
+    if action in {"tap", "assert_exists"}:
+        _set_if_present(mapping, "selector", step.get("selector"))
+        _set_if_present(mapping, "text", step.get("text"))
+        _set_optional_int(mapping, "timeout_ms", step.get("timeout_ms"))
+    elif action == "input":
+        _set_if_present(mapping, "selector", step.get("selector"))
+        _set_if_present(mapping, "value", step.get("value"))
+        _set_optional_int(mapping, "timeout_ms", step.get("timeout_ms"))
+    elif action == "wait":
+        _set_optional_int(mapping, "timeout_ms", step.get("timeout_ms"))
+    elif action == "assert_text":
+        _set_if_present(mapping, "text", step.get("text"))
+    elif action == "screenshot":
+        _set_if_present(mapping, "name", step.get("name"))
+    elif action == "metric_check":
+        _set_if_present(mapping, "metric", step.get("metric"))
+        _set_optional_float(mapping, "min", step.get("min"))
+        _set_optional_float(mapping, "max", step.get("max"))
+    return mapping
+
+
+def _form_value(form, key: str, default: str = "") -> str:
+    value = form.get(key, default)
+    return str(value).strip() if value is not None else default
+
+
+def _form_list(form, key: str) -> list[str]:
+    return [str(value) for value in form.getlist(key)]
+
+
+def _indexed_form_value(form, key: str, index: int) -> str:
+    values = _form_list(form, key)
+    if index >= len(values):
+        return ""
+    return values[index].strip()
+
+
+def _set_if_present(mapping: dict[str, object], key: str, value: str | None) -> None:
+    if value is not None and str(value).strip():
+        mapping[key] = str(value).strip()
+
+
+def _set_optional_int(mapping: dict[str, object], key: str, value: str | None) -> None:
+    parsed = _optional_int_text(value)
+    if parsed is not None:
+        mapping[key] = parsed
+
+
+def _set_optional_float(mapping: dict[str, object], key: str, value: str | None) -> None:
+    parsed = _optional_float_text(value)
+    if parsed is not None:
+        mapping[key] = parsed
+
+
+def _optional_int_text(value: object) -> int | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    return int(text)
+
+
+def _int_text(value: object, default: int) -> int:
+    parsed = _optional_int_text(value)
+    return default if parsed is None else parsed
+
+
+def _optional_float_text(value: object) -> float | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    return float(text)
 
 
 def _artifact_url_filter(store: SqliteStore):

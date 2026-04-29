@@ -54,9 +54,41 @@ class WebSmokeTests(unittest.TestCase):
             )
 
             client = TestClient(app)
-            for path in ("/", "/suites", "/runs/run-web", "/guide", "/settings"):
+            for path in (
+                "/",
+                "/suites",
+                "/suites/builder",
+                "/runs/run-web",
+                "/guide",
+                "/settings",
+            ):
                 response = client.get(path)
                 self.assertEqual(response.status_code, 200, path)
+
+            response = client.post(
+                "/suites/builder",
+                data={
+                    "suite_name": "Builder Suite",
+                    "target_mode": "apk",
+                    "apk": "app.apk",
+                    "max_duration_ms": "30000",
+                    "max_assertion_failures": "0",
+                    "max_metric_violations": "0",
+                    "scenario_name": "builder smoke",
+                    "step_action": ["launch_app", "wait", "screenshot"],
+                    "step_selector": ["", "", ""],
+                    "step_text": ["", "", ""],
+                    "step_value": ["", "", ""],
+                    "step_timeout_ms": ["", "1000", ""],
+                    "step_name": ["", "", "launch"],
+                    "step_metric": ["", "", ""],
+                    "step_min": ["", "", ""],
+                    "step_max": ["", "", ""],
+                },
+                follow_redirects=False,
+            )
+            self.assertEqual(response.status_code, 303)
+            self.assertEqual(store.load_suite("builder-suite").name, "Builder Suite")
 
 
 if __name__ == "__main__":
