@@ -115,18 +115,20 @@
     </div>
   </section>
 
-  {% if inspect_url %}
   <section class="panel builder-panel element-picker" data-element-picker data-source-url="{{ inspect_url }}">
     <div class="section-head">
       <div>
         <h2>Screen Elements</h2>
-        <p class="section-subtitle" data-picker-status>Ready to scan the current app screen.</p>
+        <p class="section-subtitle" data-picker-status>Scan the selected APK or installed app, then search and pick an element.</p>
       </div>
       <button class="button" type="button" data-scan-elements>Scan Screen</button>
     </div>
+    <label class="search-field">
+      <span>Search elements</span>
+      <input type="search" data-element-search placeholder="Search text, selector, role, class">
+    </label>
     <div class="element-list" data-element-list></div>
   </section>
-  {% endif %}
 
   <section class="panel builder-panel">
     <div class="section-head">
@@ -171,12 +173,14 @@
     const pickerList = document.querySelector("[data-element-list]");
     const pickerStatus = document.querySelector("[data-picker-status]");
     const scanButton = document.querySelector("[data-scan-elements]");
+    const elementSearch = document.querySelector("[data-element-search]");
     const installedAppList = document.querySelector("[data-installed-app-list]");
     const installedAppStatus = document.querySelector("[data-installed-app-status]");
     const loadInstalledAppsButton = document.querySelector("[data-load-installed-apps]");
     let activeStepCard = null;
     let pickerLoaded = false;
     let installedAppsLoaded = false;
+    let scannedElements = [];
 
     function syncTarget() {
       const selected = document.querySelector("input[name='target_mode']:checked")?.value || "apk";
@@ -296,17 +300,54 @@
       pickerStatus.textContent = "Scanning current screen...";
       pickerList.replaceChildren();
       try {
-        const response = await fetch(picker.dataset.sourceUrl, {headers: {"Accept": "application/json"}});
+        const response = await fetch(elementScanUrl(), {headers: {"Accept": "application/json"}});
         const payload = await response.json();
         if (!response.ok) {
           throw new Error(payload.error || "Could not scan screen.");
         }
-        renderElements(payload.elements || []);
-        pickerStatus.textContent = `${(payload.elements || []).length} elements found.`;
+        scannedElements = payload.elements || [];
+        renderFilteredElements();
+        pickerStatus.textContent = `${scannedElements.length} elements found.`;
       } catch (error) {
         pickerLoaded = false;
         pickerStatus.textContent = error.message;
       }
+    }
+
+    function elementScanUrl() {
+      const url = new URL(picker.dataset.sourceUrl, window.location.origin);
+      url.searchParams.set("target_mode", document.querySelector("input[name='target_mode']:checked")?.value || "apk");
+      url.searchParams.set("apk", document.querySelector("input[name='apk']")?.value || "");
+      url.searchParams.set("app_package", document.querySelector("input[name='app_package']")?.value || "");
+      url.searchParams.set("app_activity", document.querySelector("input[name='app_activity']")?.value || "");
+      url.searchParams.set("app_wait_activity", document.querySelector("input[name='app_wait_activity']")?.value || "");
+      url.searchParams.set("no_reset", document.querySelector("input[name='no_reset']")?.checked ? "true" : "false");
+      return url;
+    }
+
+    function renderFilteredElements() {
+      const query = (elementSearch?.value || "").trim().toLowerCase();
+      const filtered = query
+        ? scannedElements.filter((element) => elementText(element).includes(query))
+        : scannedElements;
+      renderElements(filtered);
+      if (pickerStatus && scannedElements.length) {
+        pickerStatus.textContent = query
+          ? `${filtered.length} of ${scannedElements.length} elements matched.`
+          : `${scannedElements.length} elements found.`;
+      }
+    }
+
+    function elementText(element) {
+      return [
+        element.label,
+        element.selector,
+        element.text,
+        element.role,
+        element.class_name,
+        element.resource_id,
+        element.accessibility_id,
+      ].filter(Boolean).join(" ").toLowerCase();
     }
 
     function renderElements(elements) {
@@ -418,6 +459,9 @@
     });
     loadInstalledAppsButton?.addEventListener("click", () => {
       loadInstalledApps(true);
+    });
+    elementSearch?.addEventListener("input", () => {
+      renderFilteredElements();
     });
     scanButton?.addEventListener("click", () => {
       loadElements(true);

@@ -69,6 +69,11 @@ class WebSmokeTests(unittest.TestCase):
                 response = client.get(path)
                 self.assertEqual(response.status_code, 200, path)
 
+            builder_page = client.get("/suites/builder").text
+            self.assertIn("Screen Elements", builder_page)
+            self.assertIn("Search elements", builder_page)
+            self.assertIn("data-pick-element", builder_page)
+
             with patch(
                 "sla_app.web.app._installed_apps_payload",
                 return_value={
@@ -85,6 +90,25 @@ class WebSmokeTests(unittest.TestCase):
                 response = client.get("/android/installed-apps")
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.json()["apps"][0]["package"], "com.hspace.testapp")
+
+            class FakeAdapter:
+                def inspect_elements(self):
+                    return [
+                        {
+                            "label": "Email",
+                            "selector": "id=com.example:id/email",
+                            "role": "input",
+                            "confidence": "high",
+                        }
+                    ]
+
+                def close(self) -> None:
+                    pass
+
+            with patch("sla_app.web.app.AndroidAppiumAdapter.from_suite", return_value=FakeAdapter()):
+                response = client.get("/android/elements", params={"target_mode": "apk", "apk": "app.apk"})
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json()["elements"][0]["selector"], "id=com.example:id/email")
 
             response = client.post(
                 f"/suites/{summary.suite_id}/edit/helper",
@@ -114,20 +138,6 @@ class WebSmokeTests(unittest.TestCase):
             self.assertEqual(edited_suite.name, "Edited Web Suite")
             self.assertEqual(edited_suite.app.apk, "edited.apk")
             self.assertEqual(edited_suite.scenarios[0].steps[1].timeout_ms, 500)
-
-            class FakeAdapter:
-                def inspect_elements(self):
-                    return [
-                        {
-                            "label": "Email",
-                            "selector": "id=com.example:id/email",
-                            "role": "input",
-                            "confidence": "high",
-                        }
-                    ]
-
-                def close(self) -> None:
-                    pass
 
             with patch("sla_app.web.app.AndroidAppiumAdapter.from_suite", return_value=FakeAdapter()):
                 response = client.get(f"/suites/{summary.suite_id}/elements")

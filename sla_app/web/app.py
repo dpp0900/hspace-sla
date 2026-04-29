@@ -97,7 +97,7 @@ def create_app(base_dir: str | Path | None = None) -> FastAPI:
                 "back_url": "/suites",
                 "yaml_url": "/suites/new",
                 "submit_label": "Save Suite",
-                "inspect_url": None,
+                "inspect_url": "/android/elements",
                 "installed_apps_url": "/android/installed-apps",
                 "builder": _default_builder_state(),
                 "error": None,
@@ -124,7 +124,7 @@ def create_app(base_dir: str | Path | None = None) -> FastAPI:
                     "back_url": "/suites",
                     "yaml_url": "/suites/new",
                     "submit_label": "Save Suite",
-                    "inspect_url": None,
+                    "inspect_url": "/android/elements",
                     "installed_apps_url": "/android/installed-apps",
                     "builder": builder,
                     "error": str(exc),
@@ -218,7 +218,7 @@ def create_app(base_dir: str | Path | None = None) -> FastAPI:
                 "back_url": f"/suites/{suite_id}/edit",
                 "yaml_url": f"/suites/{suite_id}/edit/yaml",
                 "submit_label": "Save Changes",
-                "inspect_url": f"/suites/{suite_id}/elements",
+                "inspect_url": "/android/elements",
                 "installed_apps_url": "/android/installed-apps",
                 "builder": _builder_state_from_suite(suite),
                 "error": None,
@@ -247,7 +247,7 @@ def create_app(base_dir: str | Path | None = None) -> FastAPI:
                     "back_url": f"/suites/{suite_id}/edit",
                     "yaml_url": f"/suites/{suite_id}/edit/yaml",
                     "submit_label": "Save Changes",
-                    "inspect_url": f"/suites/{suite_id}/elements",
+                    "inspect_url": "/android/elements",
                     "installed_apps_url": "/android/installed-apps",
                     "builder": builder,
                     "error": str(exc),
@@ -312,6 +312,30 @@ def create_app(base_dir: str | Path | None = None) -> FastAPI:
         except Exception as exc:  # noqa: BLE001 - report local Android environment issues to the UI.
             return JSONResponse({"error": str(exc), "apps": []}, status_code=500)
 
+    @app.get("/android/elements")
+    async def inspect_android_elements(
+        target_mode: str = "apk",
+        apk: str = "",
+        app_package: str = "",
+        app_activity: str = "",
+        app_wait_activity: str = "",
+        no_reset: bool = False,
+    ):
+        try:
+            app_target = _app_target_from_scan_request(
+                target_mode=target_mode,
+                apk=apk,
+                app_package=app_package,
+                app_activity=app_activity,
+                app_wait_activity=app_wait_activity,
+                no_reset=no_reset,
+            )
+            return _inspect_app_target_elements(app_target)
+        except (SuiteValidationError, ValueError) as exc:
+            return JSONResponse({"error": str(exc), "elements": []}, status_code=400)
+        except Exception as exc:  # noqa: BLE001 - surface Android/Appium scan errors to the UI.
+            return JSONResponse({"error": str(exc), "elements": []}, status_code=500)
+
     @app.get("/suites/{suite_id}/elements")
     async def inspect_suite_elements(suite_id: str):
         try:
@@ -319,13 +343,10 @@ def create_app(base_dir: str | Path | None = None) -> FastAPI:
         except KeyError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
-        adapter = AndroidAppiumAdapter.from_suite(suite)
         try:
-            return {"elements": adapter.inspect_elements()}
+            return _inspect_app_target_elements(suite.app, source_path=suite.source_path)
         except Exception as exc:  # noqa: BLE001 - surface Appium/device scan errors to the UI.
             return JSONResponse({"error": str(exc), "elements": []}, status_code=500)
-        finally:
-            adapter.close()
 
     @app.get("/suites/{suite_id}/export", response_class=PlainTextResponse)
     async def export_suite(suite_id: str):
@@ -456,6 +477,45 @@ def _installed_apps_payload() -> dict[str, object]:
         "device": serial,
         "apps": [app.to_dict() for app in apps],
     }
+
+
+def _app_target_from_scan_request(
+    *,
+    target_mode: str,
+    apk: str,
+    app_package: str,
+    app_activity: str,
+    app_wait_activity: str,
+    no_reset: bool,
+) -> AppTarget:
+    if target_mode == "installed":
+        if not app_package or not app_activity:
+            raise ValueError("Select an installed app or enter package/activity first.")
+        return AppTarget(
+            platform="android",
+            app_package=app_package.strip(),
+            app_activity=app_activity.strip(),
+            app_wait_activity=app_wait_activity.strip() or None,
+            no_reset=no_reset,
+        )
+
+    if not apk:
+        raise ValueError("Enter an APK path before scanning elements.")
+    return AppTarget(platform="android", apk=apk.strip(), no_reset=no_reset)
+
+
+def _inspect_app_target_elements(app_target: AppTarget, source_path: Path | None = None) -> dict[str, object]:
+    suite = TestSuite(
+        name="Element Scan",
+        app=app_target,
+        scenarios=[Scenario(name="scan", steps=[ActionStep(action="launch_app")])],
+        source_path=source_path,
+    )
+    adapter = AndroidAppiumAdapter.from_suite(suite)
+    try:
+        return {"elements": adapter.inspect_elements()}
+    finally:
+        adapter.close()
 
 
 def _android_discovery_config() -> LaunchConfig:

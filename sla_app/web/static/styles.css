@@ -673,6 +673,19 @@ select:focus {
   min-width: 72px;
 }
 
+.search-field {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 12px;
+}
+
+.search-field span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
 .element-picker {
   scroll-margin-top: 84px;
 }
