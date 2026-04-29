@@ -274,7 +274,7 @@ $env:PATH="$env:ANDROID_SDK_ROOT\platform-tools;$env:ANDROID_SDK_ROOT\emulator;$
 
 ## 테스트 APK
 
-이 저장소에는 Appium 연결 검증용 최소 Android 앱이 포함되어 있습니다.
+이 저장소에는 Appium 연결과 SLA 액션 검증용 Android 앱이 포함되어 있습니다.
 
 바로 사용 가능한 APK:
 
@@ -286,6 +286,15 @@ $env:PATH="$env:ANDROID_SDK_ROOT\platform-tools;$env:ANDROID_SDK_ROOT\emulator;$
 - Activity: `com.hspace.testapp.MainActivity`
 
 이 APK는 현재 네이티브 라이브러리를 포함하지 않으므로 CPU 아키텍처와 무관하게 설치 가능합니다. 실질적인 제약은 Android 버전이며, `minSdkVersion=26`이라 Android 8.0 이상에서 사용 가능합니다.
+
+앱에는 아래 테스트 대상이 들어 있습니다.
+
+- 입력창: `accessibility_id=message_input`
+- Echo 버튼: `accessibility_id=echo_button`
+- Success 버튼: `accessibility_id=success_button`
+- 상태 텍스트: `accessibility_id=status_text`
+
+전체 MVP 액션을 검증하려면 웹앱에서 `Android Full Feature` suite를 실행합니다.
 
 ### macOS / Linux에서 재빌드
 
@@ -422,6 +431,12 @@ CLI 런처와 웹앱의 Android 실행 어댑터는 같은 Android/Appium 흐름
 4. Appium 서버에 연결하거나 필요 시 Python `AppiumService`로 시작
 5. `apk` 또는 `appPackage/appActivity` capability로 세션 생성
 6. YAML step 실행, 스크린샷/로그 저장, SLA 판정 저장
+
+웹앱이 Appium 서버를 자동 시작할 때는 `collect_metrics`를 위해 `uiautomator2:adb_shell` insecure feature를 허용합니다. 수동으로 Appium 서버를 띄우는 경우 metric 수집을 쓰려면 같은 옵션을 지정하세요.
+
+```bash
+appium --allow-insecure uiautomator2:adb_shell
+```
 
 ## 검증
 

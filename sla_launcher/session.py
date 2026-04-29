@@ -21,6 +21,7 @@ def build_capabilities(config: LaunchConfig, serial: str) -> dict[str, object]:
 
     if config.apk:
         capabilities["app"] = config.apk
+        capabilities["enforceAppInstall"] = True
     else:
         capabilities["appPackage"] = config.app_package
         capabilities["appActivity"] = config.app_activity

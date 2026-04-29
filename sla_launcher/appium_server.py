@@ -79,7 +79,14 @@ def maybe_start_appium(config: LaunchConfig):
 
     service = AppiumService()
     host, port, base_path = parse_appium_url(config.appium_url)
-    service_args = ["--address", host, "--port", str(port)]
+    service_args = [
+        "--address",
+        host,
+        "--port",
+        str(port),
+        "--allow-insecure",
+        "uiautomator2:adb_shell",
+    ]
 
     if base_path:
         service_args.extend(["--base-path", base_path])

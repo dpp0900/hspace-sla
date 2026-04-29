@@ -1,0 +1,36 @@
+name: Android Full Feature
+app:
+  platform: android
+  apk: test-apk/build/hspace-test-app-debug.apk
+thresholds:
+  max_duration_ms: 90000
+  max_assertion_failures: 0
+  max_metric_violations: 0
+  required_assertions: 4
+scenarios:
+  - name: exercise all MVP actions
+    steps:
+      - action: launch_app
+      - action: wait
+        timeout_ms: 1500
+      - action: assert_text
+        text: HSPACE Appium Test
+      - action: assert_exists
+        selector: accessibility_id=status_text
+      - action: input
+        selector: accessibility_id=message_input
+        value: hello-sla
+      - action: tap
+        selector: accessibility_id=echo_button
+      - action: assert_text
+        text: 'Echo: hello-sla'
+      - action: tap
+        selector: accessibility_id=success_button
+      - action: assert_text
+        text: Action Complete
+      - action: screenshot
+        name: full-feature
+      - action: collect_metrics
+      - action: metric_check
+        metric: memory_mb
+        max: 2048
