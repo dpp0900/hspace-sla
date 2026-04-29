@@ -204,6 +204,12 @@ h2 {
   margin-bottom: 16px;
 }
 
+.section-subtitle {
+  color: var(--muted);
+  line-height: 1.45;
+  margin: 6px 0 0;
+}
+
 .table-wrap {
   overflow-x: auto;
 }
@@ -608,6 +614,55 @@ select:focus {
   display: none;
 }
 
+.input-action {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.input-action .button {
+  min-width: 72px;
+}
+
+.element-picker {
+  scroll-margin-top: 84px;
+}
+
+.element-list {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.element-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 9px;
+  min-width: 0;
+  padding: 14px;
+}
+
+.element-card strong,
+.element-card p {
+  margin: 0;
+}
+
+.element-card p {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.element-card code {
+  background: #f1f4f1;
+  border-radius: 6px;
+  color: var(--teal-dark);
+  font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  overflow-wrap: anywhere;
+  padding: 8px;
+}
+
 .step-list {
   display: grid;
   gap: 12px;
@@ -620,6 +675,11 @@ select:focus {
   display: grid;
   gap: 14px;
   padding: 16px;
+}
+
+.step-card.picking {
+  border-color: #9fc7bf;
+  box-shadow: 0 0 0 3px #d7ece8;
 }
 
 .step-card-head {
@@ -800,6 +860,7 @@ select:focus {
   .mode-grid,
   .field-grid,
   .field-grid.compact,
+  .element-list,
   .step-fields,
   .guide-layout,
   .guide-two-col,

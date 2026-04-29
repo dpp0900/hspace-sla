@@ -13,6 +13,8 @@ from sla_launcher.paths import default_sdk_root, platform_executable_name, sdk_t
 from sla_launcher.process import resolve_executable, resolve_sdk_root
 from sla_launcher.session import build_capabilities, create_driver
 
+from .inspector import extract_ui_elements
+
 
 class AndroidAppiumAdapter:
     def __init__(self, config: LaunchConfig) -> None:
@@ -81,6 +83,10 @@ class AndroidAppiumAdapter:
             metrics.update(self._collect_meminfo(str(current_package)))
         self._last_metrics.update(metrics)
         return metrics
+
+    def inspect_elements(self) -> list[dict[str, str]]:
+        self._ensure_driver()
+        return extract_ui_elements(str(self.driver.page_source))
 
     def close(self) -> None:
         if self.driver is not None:

@@ -110,6 +110,19 @@
     </div>
   </section>
 
+  {% if inspect_url %}
+  <section class="panel builder-panel element-picker" data-element-picker data-source-url="{{ inspect_url }}">
+    <div class="section-head">
+      <div>
+        <h2>Screen Elements</h2>
+        <p class="section-subtitle" data-picker-status>Ready to scan the current app screen.</p>
+      </div>
+      <button class="button" type="button" data-scan-elements>Scan Screen</button>
+    </div>
+    <div class="element-list" data-element-list></div>
+  </section>
+  {% endif %}
+
   <section class="panel builder-panel">
     <div class="section-head">
       <h2>Steps</h2>
@@ -149,6 +162,12 @@
     const targetRadios = document.querySelectorAll("input[name='target_mode']");
     const stepList = document.querySelector("[data-step-list]");
     const template = document.querySelector("[data-step-template]");
+    const picker = document.querySelector("[data-element-picker]");
+    const pickerList = document.querySelector("[data-element-list]");
+    const pickerStatus = document.querySelector("[data-picker-status]");
+    const scanButton = document.querySelector("[data-scan-elements]");
+    let activeStepCard = null;
+    let pickerLoaded = false;
 
     function syncTarget() {
       const selected = document.querySelector("input[name='target_mode']:checked")?.value || "apk";
@@ -165,17 +184,132 @@
       });
     }
 
+    function setActiveStep(card) {
+      activeStepCard = card;
+      document.querySelectorAll("[data-step-card]").forEach((item) => {
+        item.classList.toggle("picking", item === card);
+      });
+    }
+
     function syncAllSteps() {
       document.querySelectorAll("[data-step-card]").forEach(syncStep);
     }
 
+    async function loadElements(force = false) {
+      if (!picker || !pickerList || !pickerStatus || (!force && pickerLoaded)) {
+        return;
+      }
+      pickerLoaded = true;
+      pickerStatus.textContent = "Scanning current screen...";
+      pickerList.replaceChildren();
+      try {
+        const response = await fetch(picker.dataset.sourceUrl, {headers: {"Accept": "application/json"}});
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.error || "Could not scan screen.");
+        }
+        renderElements(payload.elements || []);
+        pickerStatus.textContent = `${(payload.elements || []).length} elements found.`;
+      } catch (error) {
+        pickerLoaded = false;
+        pickerStatus.textContent = error.message;
+      }
+    }
+
+    function renderElements(elements) {
+      pickerList.replaceChildren();
+      if (!elements.length) {
+        const empty = document.createElement("p");
+        empty.className = "empty";
+        empty.textContent = "No selectable elements found.";
+        pickerList.append(empty);
+        return;
+      }
+      elements.forEach((element) => {
+        const card = document.createElement("article");
+        card.className = "element-card";
+
+        const title = document.createElement("strong");
+        title.textContent = element.label || element.selector || element.text || "Element";
+        card.append(title);
+
+        const meta = document.createElement("p");
+        meta.textContent = [element.role, element.confidence, element.bounds].filter(Boolean).join(" · ");
+        card.append(meta);
+
+        if (element.selector) {
+          const code = document.createElement("code");
+          code.textContent = element.selector;
+          card.append(code);
+        }
+
+        const actions = document.createElement("div");
+        actions.className = "actions";
+        if (element.selector) {
+          const selectorButton = document.createElement("button");
+          selectorButton.className = "button";
+          selectorButton.type = "button";
+          selectorButton.textContent = "Use element";
+          selectorButton.addEventListener("click", () => applyElement(element, "selector"));
+          actions.append(selectorButton);
+        }
+        if (element.text) {
+          const textButton = document.createElement("button");
+          textButton.className = "button";
+          textButton.type = "button";
+          textButton.textContent = "Use text";
+          textButton.addEventListener("click", () => applyElement(element, "text"));
+          actions.append(textButton);
+        }
+        card.append(actions);
+        pickerList.append(card);
+      });
+    }
+
+    function applyElement(element, mode) {
+      const card = activeStepCard || stepList.querySelector("[data-step-card]");
+      if (!card) {
+        return;
+      }
+      setActiveStep(card);
+      const selectorInput = card.querySelector("[name='step_selector']");
+      const textInput = card.querySelector("[name='step_text']");
+      if (mode === "selector" && selectorInput) {
+        selectorInput.value = element.selector || "";
+        if (textInput) {
+          textInput.value = "";
+        }
+      }
+      if (mode === "text" && textInput) {
+        textInput.value = element.text || "";
+        if (selectorInput) {
+          selectorInput.value = "";
+        }
+      }
+      pickerStatus.textContent = "Element applied to selected step.";
+    }
+
     targetRadios.forEach((radio) => radio.addEventListener("change", syncTarget));
+    stepList.addEventListener("focusin", (event) => {
+      const card = event.target.closest("[data-step-card]");
+      if (card) {
+        setActiveStep(card);
+      }
+    });
     stepList.addEventListener("change", (event) => {
       if (event.target.matches("[name='step_action']")) {
         syncStep(event.target.closest("[data-step-card]"));
       }
     });
     stepList.addEventListener("click", (event) => {
+      const pickButton = event.target.closest("[data-pick-element]");
+      if (pickButton) {
+        const card = pickButton.closest("[data-step-card]");
+        setActiveStep(card);
+        loadElements();
+        picker.scrollIntoView({block: "nearest", behavior: "smooth"});
+        return;
+      }
       const removeButton = event.target.closest("[data-remove-step]");
       if (!removeButton) {
         return;
@@ -189,9 +323,13 @@
       stepList.append(template.content.cloneNode(true));
       syncAllSteps();
     });
+    scanButton?.addEventListener("click", () => {
+      loadElements(true);
+    });
 
     syncTarget();
     syncAllSteps();
+    setActiveStep(stepList.querySelector("[data-step-card]"));
   })();
 </script>
 {% endblock %}

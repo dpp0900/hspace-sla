@@ -8,7 +8,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 from fastapi import FastAPI, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -94,6 +94,7 @@ def create_app(base_dir: str | Path | None = None) -> FastAPI:
                 "back_url": "/suites",
                 "yaml_url": "/suites/new",
                 "submit_label": "Save Suite",
+                "inspect_url": None,
                 "builder": _default_builder_state(),
                 "error": None,
                 "notice": None,
@@ -119,6 +120,7 @@ def create_app(base_dir: str | Path | None = None) -> FastAPI:
                     "back_url": "/suites",
                     "yaml_url": "/suites/new",
                     "submit_label": "Save Suite",
+                    "inspect_url": None,
                     "builder": builder,
                     "error": str(exc),
                     "notice": None,
@@ -211,6 +213,7 @@ def create_app(base_dir: str | Path | None = None) -> FastAPI:
                 "back_url": f"/suites/{suite_id}/edit",
                 "yaml_url": f"/suites/{suite_id}/edit/yaml",
                 "submit_label": "Save Changes",
+                "inspect_url": f"/suites/{suite_id}/elements",
                 "builder": _builder_state_from_suite(suite),
                 "error": None,
                 "notice": "Helper edits the supported fields for this suite and saves back to the same suite ID.",
@@ -238,6 +241,7 @@ def create_app(base_dir: str | Path | None = None) -> FastAPI:
                     "back_url": f"/suites/{suite_id}/edit",
                     "yaml_url": f"/suites/{suite_id}/edit/yaml",
                     "submit_label": "Save Changes",
+                    "inspect_url": f"/suites/{suite_id}/elements",
                     "builder": builder,
                     "error": str(exc),
                     "notice": None,
@@ -291,6 +295,21 @@ def create_app(base_dir: str | Path | None = None) -> FastAPI:
             )
         store.save_suite(replace(suite, suite_id=suite_id), yaml_text)
         return RedirectResponse("/suites", status_code=303)
+
+    @app.get("/suites/{suite_id}/elements")
+    async def inspect_suite_elements(suite_id: str):
+        try:
+            suite = store.load_suite(suite_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+        adapter = AndroidAppiumAdapter.from_suite(suite)
+        try:
+            return {"elements": adapter.inspect_elements()}
+        except Exception as exc:  # noqa: BLE001 - surface Appium/device scan errors to the UI.
+            return JSONResponse({"error": str(exc), "elements": []}, status_code=500)
+        finally:
+            adapter.close()
 
     @app.get("/suites/{suite_id}/export", response_class=PlainTextResponse)
     async def export_suite(suite_id: str):

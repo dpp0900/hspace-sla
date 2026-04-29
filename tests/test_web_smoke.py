@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from sla_app.core.models import RunRecord
 from sla_app.core.yaml_loader import suite_from_yaml_text
@@ -96,6 +97,25 @@ class WebSmokeTests(unittest.TestCase):
             self.assertEqual(edited_suite.name, "Edited Web Suite")
             self.assertEqual(edited_suite.app.apk, "edited.apk")
             self.assertEqual(edited_suite.scenarios[0].steps[1].timeout_ms, 500)
+
+            class FakeAdapter:
+                def inspect_elements(self):
+                    return [
+                        {
+                            "label": "Email",
+                            "selector": "id=com.example:id/email",
+                            "role": "input",
+                            "confidence": "high",
+                        }
+                    ]
+
+                def close(self) -> None:
+                    pass
+
+            with patch("sla_app.web.app.AndroidAppiumAdapter.from_suite", return_value=FakeAdapter()):
+                response = client.get(f"/suites/{summary.suite_id}/elements")
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json()["elements"][0]["selector"], "id=com.example:id/email")
 
             response = client.post(
                 "/suites/builder",

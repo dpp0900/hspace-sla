@@ -22,12 +22,17 @@
   </div>
   <div class="step-fields">
     <label data-step-field="selector">
-      <span>Selector</span>
-      <input type="text" name="step_selector" value="{{ step.selector|default('', true) }}">
+      <span>Element</span>
+      <div class="input-action">
+        <input type="text" name="step_selector" value="{{ step.selector|default('', true) }}" data-selector-input>
+        {% if inspect_url %}
+        <button class="button" type="button" data-pick-element>Pick</button>
+        {% endif %}
+      </div>
     </label>
     <label data-step-field="text">
-      <span>Text</span>
-      <input type="text" name="step_text" value="{{ step.text|default('', true) }}">
+      <span>Visible text</span>
+      <input type="text" name="step_text" value="{{ step.text|default('', true) }}" data-text-input>
     </label>
     <label data-step-field="value">
       <span>Value</span>
