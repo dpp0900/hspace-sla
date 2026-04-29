@@ -614,6 +614,54 @@ select:focus {
   display: none;
 }
 
+.target-tools {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.target-tools .section-subtitle {
+  margin: 0;
+}
+
+.installed-app-list {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 14px;
+  max-height: 260px;
+  overflow: auto;
+}
+
+.installed-app-card {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: inherit;
+  cursor: pointer;
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px;
+  text-align: left;
+}
+
+.installed-app-card:hover {
+  border-color: var(--teal);
+}
+
+.installed-app-card span,
+.installed-app-card code {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.installed-app-card code {
+  font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
 .input-action {
   align-items: center;
   display: grid;
@@ -860,6 +908,7 @@ select:focus {
   .mode-grid,
   .field-grid,
   .field-grid.compact,
+  .installed-app-list,
   .element-list,
   .step-fields,
   .guide-layout,
@@ -874,5 +923,10 @@ select:focus {
 
   .actions {
     flex-wrap: wrap;
+  }
+
+  .target-tools {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }

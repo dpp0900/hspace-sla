@@ -60,6 +60,11 @@
         </label>
       </div>
       <div class="target-fields" data-target-mode="installed">
+        <div class="target-tools">
+          <p class="section-subtitle" data-installed-app-status>Select an installed app or enter package/activity manually.</p>
+          <button class="button" type="button" data-load-installed-apps>Load Installed Apps</button>
+        </div>
+        <div class="installed-app-list" data-installed-app-list data-source-url="{{ installed_apps_url|default('/android/installed-apps') }}"></div>
         <div class="field-grid">
           <label>
             <span>Package</span>
@@ -166,8 +171,12 @@
     const pickerList = document.querySelector("[data-element-list]");
     const pickerStatus = document.querySelector("[data-picker-status]");
     const scanButton = document.querySelector("[data-scan-elements]");
+    const installedAppList = document.querySelector("[data-installed-app-list]");
+    const installedAppStatus = document.querySelector("[data-installed-app-status]");
+    const loadInstalledAppsButton = document.querySelector("[data-load-installed-apps]");
     let activeStepCard = null;
     let pickerLoaded = false;
+    let installedAppsLoaded = false;
 
     function syncTarget() {
       const selected = document.querySelector("input[name='target_mode']:checked")?.value || "apk";
@@ -193,6 +202,90 @@
 
     function syncAllSteps() {
       document.querySelectorAll("[data-step-card]").forEach(syncStep);
+    }
+
+    async function loadInstalledApps(force = false) {
+      if (!installedAppList || !installedAppStatus || (!force && installedAppsLoaded)) {
+        return;
+      }
+      installedAppsLoaded = true;
+      installedAppStatus.textContent = "Loading installed apps from the emulator...";
+      installedAppList.replaceChildren();
+      try {
+        const response = await fetch(installedAppList.dataset.sourceUrl, {headers: {"Accept": "application/json"}});
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.error || "Could not load installed apps.");
+        }
+        renderInstalledApps(payload.apps || []);
+        installedAppStatus.textContent = `${(payload.apps || []).length} launchable apps found on ${payload.device || "device"}.`;
+      } catch (error) {
+        installedAppsLoaded = false;
+        installedAppStatus.textContent = error.message;
+      }
+    }
+
+    function renderInstalledApps(apps) {
+      installedAppList.replaceChildren();
+      if (!apps.length) {
+        const empty = document.createElement("p");
+        empty.className = "empty";
+        empty.textContent = "No launchable installed apps found.";
+        installedAppList.append(empty);
+        return;
+      }
+      apps.forEach((app) => {
+        const card = document.createElement("button");
+        card.className = "installed-app-card";
+        card.type = "button";
+
+        const title = document.createElement("strong");
+        title.textContent = app.label || app.package;
+        card.append(title);
+
+        const packageLine = document.createElement("span");
+        packageLine.textContent = app.package;
+        card.append(packageLine);
+
+        const activityLine = document.createElement("code");
+        activityLine.textContent = app.activity;
+        card.append(activityLine);
+
+        card.addEventListener("click", () => applyInstalledApp(app));
+        installedAppList.append(card);
+      });
+    }
+
+    function applyInstalledApp(app) {
+      const installedRadio = document.querySelector("input[name='target_mode'][value='installed']");
+      if (installedRadio) {
+        installedRadio.checked = true;
+        syncTarget();
+      }
+
+      const packageInput = document.querySelector("input[name='app_package']");
+      const activityInput = document.querySelector("input[name='app_activity']");
+      const waitActivityInput = document.querySelector("input[name='app_wait_activity']");
+      if (packageInput) {
+        packageInput.value = app.package || "";
+      }
+      if (activityInput) {
+        activityInput.value = app.activity || "";
+      }
+      if (waitActivityInput) {
+        waitActivityInput.value = app.activity || "";
+      }
+
+      const suiteNameInput = document.querySelector("input[name='suite_name']");
+      const scenarioNameInput = document.querySelector("input[name='scenario_name']");
+      const label = app.label || app.package;
+      if (suiteNameInput && (!suiteNameInput.value || suiteNameInput.value === "Android Smoke")) {
+        suiteNameInput.value = `${label} Installed App`;
+      }
+      if (scenarioNameInput && (!scenarioNameInput.value || scenarioNameInput.value === "launch and capture")) {
+        scenarioNameInput.value = `launch ${label}`;
+      }
+      installedAppStatus.textContent = `${label} selected.`;
     }
 
     async function loadElements(force = false) {
@@ -322,6 +415,9 @@
     document.querySelector("[data-add-step]").addEventListener("click", () => {
       stepList.append(template.content.cloneNode(true));
       syncAllSteps();
+    });
+    loadInstalledAppsButton?.addEventListener("click", () => {
+      loadInstalledApps(true);
     });
     scanButton?.addEventListener("click", () => {
       loadElements(true);

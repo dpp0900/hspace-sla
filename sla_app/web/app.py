@@ -13,13 +13,16 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from sla_app.adapters.android_appium import AndroidAppiumAdapter
+from sla_app.adapters.android_appium.installed_apps import list_launchable_apps
 from sla_app.core.engine import ExecutionOptions, execute_suite
 from sla_app.core.models import ActionStep, AppTarget, MetricLimit, Scenario, SlaThresholds, TestSuite
 from sla_app.core.yaml_loader import SuiteValidationError, suite_from_yaml_text, suite_to_yaml
 from sla_app.storage import SqliteStore
-from sla_launcher.android import avd_home, detect_host_architecture, load_avd_definitions
+from sla_launcher.android import avd_home, detect_host_architecture, ensure_emulator, load_avd_definitions
 from sla_launcher.appium_server import is_appium_server_ready
+from sla_launcher.config import LaunchConfig
 from sla_launcher.paths import default_sdk_root, platform_executable_name, sdk_tool_path
+from sla_launcher.process import resolve_executable, resolve_sdk_root
 
 
 PACKAGE_DIR = Path(__file__).parent
@@ -95,6 +98,7 @@ def create_app(base_dir: str | Path | None = None) -> FastAPI:
                 "yaml_url": "/suites/new",
                 "submit_label": "Save Suite",
                 "inspect_url": None,
+                "installed_apps_url": "/android/installed-apps",
                 "builder": _default_builder_state(),
                 "error": None,
                 "notice": None,
@@ -121,6 +125,7 @@ def create_app(base_dir: str | Path | None = None) -> FastAPI:
                     "yaml_url": "/suites/new",
                     "submit_label": "Save Suite",
                     "inspect_url": None,
+                    "installed_apps_url": "/android/installed-apps",
                     "builder": builder,
                     "error": str(exc),
                     "notice": None,
@@ -214,6 +219,7 @@ def create_app(base_dir: str | Path | None = None) -> FastAPI:
                 "yaml_url": f"/suites/{suite_id}/edit/yaml",
                 "submit_label": "Save Changes",
                 "inspect_url": f"/suites/{suite_id}/elements",
+                "installed_apps_url": "/android/installed-apps",
                 "builder": _builder_state_from_suite(suite),
                 "error": None,
                 "notice": "Helper edits the supported fields for this suite and saves back to the same suite ID.",
@@ -242,6 +248,7 @@ def create_app(base_dir: str | Path | None = None) -> FastAPI:
                     "yaml_url": f"/suites/{suite_id}/edit/yaml",
                     "submit_label": "Save Changes",
                     "inspect_url": f"/suites/{suite_id}/elements",
+                    "installed_apps_url": "/android/installed-apps",
                     "builder": builder,
                     "error": str(exc),
                     "notice": None,
@@ -295,6 +302,15 @@ def create_app(base_dir: str | Path | None = None) -> FastAPI:
             )
         store.save_suite(replace(suite, suite_id=suite_id), yaml_text)
         return RedirectResponse("/suites", status_code=303)
+
+    @app.get("/android/installed-apps")
+    async def installed_apps():
+        try:
+            return _installed_apps_payload()
+        except SystemExit as exc:
+            return JSONResponse({"error": _system_exit_message(exc), "apps": []}, status_code=500)
+        except Exception as exc:  # noqa: BLE001 - report local Android environment issues to the UI.
+            return JSONResponse({"error": str(exc), "apps": []}, status_code=500)
 
     @app.get("/suites/{suite_id}/elements")
     async def inspect_suite_elements(suite_id: str):
@@ -423,6 +439,58 @@ def _helper_url_if_available(store: SqliteStore, suite_id: str) -> str | None:
         return None
     helper_available, _helper_reasons = _builder_compatibility(suite)
     return f"/suites/{suite_id}/edit/helper" if helper_available else None
+
+
+def _installed_apps_payload() -> dict[str, object]:
+    config = _android_discovery_config()
+    sdk_root = resolve_sdk_root(config.android_sdk_root)
+    adb_hint = config.adb_path or sdk_tool_path(
+        sdk_root,
+        "platform-tools",
+        platform_executable_name("adb"),
+    )
+    adb_path = resolve_executable(adb_hint, platform_executable_name("adb"))
+    serial = ensure_emulator(config, adb_path)
+    apps = list_launchable_apps(adb_path, serial)
+    return {
+        "device": serial,
+        "apps": [app.to_dict() for app in apps],
+    }
+
+
+def _android_discovery_config() -> LaunchConfig:
+    sdk_root_default = os.getenv("ANDROID_SDK_ROOT") or os.getenv("ANDROID_HOME") or str(default_sdk_root())
+    return LaunchConfig(
+        appium_url=os.getenv("APPIUM_URL", "http://127.0.0.1:4723"),
+        start_appium=False,
+        keep_appium_running=False,
+        node_path=os.getenv("APPIUM_NODE_PATH"),
+        npm_path=os.getenv("APPIUM_NPM_PATH"),
+        appium_main_script=os.getenv("APPIUM_MAIN_SCRIPT"),
+        avd=os.getenv("ANDROID_AVD"),
+        serial=os.getenv("ANDROID_SERIAL"),
+        emulator_path=os.getenv("ANDROID_EMULATOR_PATH"),
+        android_sdk_root=sdk_root_default,
+        adb_path=os.getenv("ANDROID_ADB_PATH"),
+        device_name=os.getenv("ANDROID_DEVICE_NAME", "Android Emulator"),
+        apk=None,
+        app_package=None,
+        app_activity=None,
+        app_wait_activity=None,
+        no_reset=True,
+        boot_timeout=int(os.getenv("ANDROID_BOOT_TIMEOUT", "240")),
+        server_timeout=int(os.getenv("APPIUM_SERVER_TIMEOUT", "45")),
+        launch_wait=0,
+        emulator_args=tuple(filter(None, os.getenv("ANDROID_EMULATOR_ARGS", "").split())),
+    )
+
+
+def _system_exit_message(exc: SystemExit) -> str:
+    if isinstance(exc.code, int):
+        return f"launcher exited with code {exc.code}"
+    if exc.code:
+        return str(exc.code)
+    return "launcher exited"
 
 
 def _import_existing_suites(store: SqliteStore) -> None:

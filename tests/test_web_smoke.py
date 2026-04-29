@@ -69,6 +69,23 @@ class WebSmokeTests(unittest.TestCase):
                 response = client.get(path)
                 self.assertEqual(response.status_code, 200, path)
 
+            with patch(
+                "sla_app.web.app._installed_apps_payload",
+                return_value={
+                    "device": "emulator-5554",
+                    "apps": [
+                        {
+                            "label": "HSPACE Test App",
+                            "package": "com.hspace.testapp",
+                            "activity": ".MainActivity",
+                        }
+                    ],
+                },
+            ):
+                response = client.get("/android/installed-apps")
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json()["apps"][0]["package"], "com.hspace.testapp")
+
             response = client.post(
                 f"/suites/{summary.suite_id}/edit/helper",
                 data={
@@ -141,6 +158,35 @@ class WebSmokeTests(unittest.TestCase):
             )
             self.assertEqual(response.status_code, 303)
             self.assertEqual(store.load_suite("builder-suite").name, "Builder Suite")
+
+            response = client.post(
+                "/suites/builder",
+                data={
+                    "suite_name": "Installed Suite",
+                    "target_mode": "installed",
+                    "app_package": "com.hspace.testapp",
+                    "app_activity": ".MainActivity",
+                    "app_wait_activity": ".MainActivity",
+                    "max_duration_ms": "30000",
+                    "max_assertion_failures": "0",
+                    "max_metric_violations": "0",
+                    "scenario_name": "installed smoke",
+                    "step_action": ["launch_app", "wait", "screenshot"],
+                    "step_selector": ["", "", ""],
+                    "step_text": ["", "", ""],
+                    "step_value": ["", "", ""],
+                    "step_timeout_ms": ["", "1000", ""],
+                    "step_name": ["", "", "installed"],
+                    "step_metric": ["", "", ""],
+                    "step_min": ["", "", ""],
+                    "step_max": ["", "", ""],
+                },
+                follow_redirects=False,
+            )
+            self.assertEqual(response.status_code, 303)
+            installed_suite = store.load_suite("installed-suite")
+            self.assertEqual(installed_suite.app.app_package, "com.hspace.testapp")
+            self.assertEqual(installed_suite.app.app_activity, ".MainActivity")
 
             response = client.post("/suites/builder-suite/delete", follow_redirects=False)
             self.assertEqual(response.status_code, 303)
