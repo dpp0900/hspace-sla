@@ -76,6 +76,7 @@ class WebSmokeTests(unittest.TestCase):
             self.assertIn('value="advanced"', builder_page)
             self.assertIn("data-pick-element", builder_page)
             self.assertIn("addStepFromElement", builder_page)
+            self.assertIn("isInputElement", builder_page)
 
             with patch(
                 "sla_app.web.app._installed_apps_payload",

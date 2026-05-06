@@ -403,7 +403,9 @@
         actions.className = "actions";
         if (element.selector) {
           actions.append(elementActionButton("탭", () => addStepFromElement(element, "tap", "selector")));
-          actions.append(elementActionButton("입력", () => addStepFromElement(element, "input", "selector")));
+          if (isInputElement(element)) {
+            actions.append(elementActionButton("입력", () => addStepFromElement(element, "input", "selector")));
+          }
           actions.append(elementActionButton("존재 검증", () => addStepFromElement(element, "assert_exists", "selector")));
 
           const selectorButton = document.createElement("button");
@@ -426,6 +428,12 @@
         card.append(actions);
         pickerList.append(card);
       });
+    }
+
+    function isInputElement(element) {
+      const role = (element.role || "").toLowerCase();
+      const className = (element.class_name || "").toLowerCase();
+      return role === "input" || className.includes("edittext") || className.includes("textfield");
     }
 
     function elementActionButton(label, callback) {
