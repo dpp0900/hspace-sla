@@ -131,11 +131,6 @@
       <span>요소 검색</span>
       <input type="search" data-element-search placeholder="텍스트, selector, 역할, class 검색">
     </label>
-    <div class="quick-step-actions">
-      <button class="button" type="button" data-add-screen-step="wait">대기 추가</button>
-      <button class="button" type="button" data-add-screen-step="screenshot">스크린샷 추가</button>
-      <button class="button" type="button" data-add-screen-step="collect_metrics">지표 수집 추가</button>
-    </div>
     <div class="element-list" data-element-list></div>
   </section>
 
@@ -479,16 +474,6 @@
       pickerStatus.textContent = `${stepLabel(action)} 스텝을 추가했습니다.`;
     }
 
-    function addScreenStep(action) {
-      const valuesByAction = {
-        wait: {action: "wait", timeout_ms: "1000"},
-        screenshot: {action: "screenshot", name: `screen-${stepList.querySelectorAll("[data-step-card]").length + 1}`},
-        collect_metrics: {action: "collect_metrics"},
-      };
-      appendStep(valuesByAction[action] || {action});
-      pickerStatus.textContent = `${stepLabel(action)} 스텝을 추가했습니다.`;
-    }
-
     function stepLabel(action) {
       return {
         tap: "탭",
@@ -556,9 +541,6 @@
     });
     document.querySelector("[data-add-step]").addEventListener("click", () => {
       appendStep();
-    });
-    document.querySelectorAll("[data-add-screen-step]").forEach((button) => {
-      button.addEventListener("click", () => addScreenStep(button.dataset.addScreenStep));
     });
     loadInstalledAppsButton?.addEventListener("click", () => {
       loadInstalledApps(true);

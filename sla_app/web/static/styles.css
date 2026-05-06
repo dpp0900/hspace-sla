@@ -686,13 +686,6 @@ select:focus {
   text-transform: uppercase;
 }
 
-.quick-step-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
 .element-picker {
   scroll-margin-top: 84px;
 }
