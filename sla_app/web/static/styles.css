@@ -686,6 +686,13 @@ select:focus {
   text-transform: uppercase;
 }
 
+.quick-step-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
 .element-picker {
   scroll-margin-top: 84px;
 }
@@ -722,6 +729,10 @@ select:focus {
   font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   overflow-wrap: anywhere;
   padding: 8px;
+}
+
+.element-card .actions {
+  flex-wrap: wrap;
 }
 
 .step-list {

@@ -131,6 +131,11 @@
       <span>Search elements</span>
       <input type="search" data-element-search placeholder="Search text, selector, role, class">
     </label>
+    <div class="quick-step-actions">
+      <button class="button" type="button" data-add-screen-step="wait">Add wait</button>
+      <button class="button" type="button" data-add-screen-step="screenshot">Add screenshot</button>
+      <button class="button" type="button" data-add-screen-step="collect_metrics">Add metrics</button>
+    </div>
     <div class="element-list" data-element-list></div>
   </section>
 
@@ -389,24 +394,111 @@
         const actions = document.createElement("div");
         actions.className = "actions";
         if (element.selector) {
+          actions.append(elementActionButton("Tap", () => addStepFromElement(element, "tap", "selector")));
+          actions.append(elementActionButton("Input", () => addStepFromElement(element, "input", "selector")));
+          actions.append(elementActionButton("Assert exists", () => addStepFromElement(element, "assert_exists", "selector")));
+
           const selectorButton = document.createElement("button");
           selectorButton.className = "button";
           selectorButton.type = "button";
-          selectorButton.textContent = "Use element";
+          selectorButton.textContent = "Fill selected";
           selectorButton.addEventListener("click", () => applyElement(element, "selector"));
           actions.append(selectorButton);
         }
         if (element.text) {
+          actions.append(elementActionButton("Assert text", () => addStepFromElement(element, "assert_text", "text")));
+
           const textButton = document.createElement("button");
           textButton.className = "button";
           textButton.type = "button";
-          textButton.textContent = "Use text";
+          textButton.textContent = "Fill text";
           textButton.addEventListener("click", () => applyElement(element, "text"));
           actions.append(textButton);
         }
         card.append(actions);
         pickerList.append(card);
       });
+    }
+
+    function elementActionButton(label, callback) {
+      const button = document.createElement("button");
+      button.className = "button";
+      button.type = "button";
+      button.textContent = label;
+      button.addEventListener("click", callback);
+      return button;
+    }
+
+    function appendStep(values = {}) {
+      const fragment = template.content.cloneNode(true);
+      const card = fragment.querySelector("[data-step-card]");
+      stepList.append(fragment);
+      applyStepValues(card, values);
+      syncStep(card);
+      setActiveStep(card);
+      card.scrollIntoView({block: "nearest", behavior: "smooth"});
+      return card;
+    }
+
+    function applyStepValues(card, values) {
+      const fieldMap = {
+        action: "step_action",
+        selector: "step_selector",
+        text: "step_text",
+        value: "step_value",
+        timeout_ms: "step_timeout_ms",
+        name: "step_name",
+        metric: "step_metric",
+        min: "step_min",
+        max: "step_max",
+      };
+      Object.entries(fieldMap).forEach(([key, fieldName]) => {
+        if (!(key in values)) {
+          return;
+        }
+        const input = card.querySelector(`[name='${fieldName}']`);
+        if (input) {
+          input.value = values[key] ?? "";
+        }
+      });
+    }
+
+    function addStepFromElement(element, action, mode) {
+      const values = {action, timeout_ms: action === "assert_text" ? "" : "5000"};
+      if (mode === "selector") {
+        values.selector = element.selector || "";
+      }
+      if (mode === "text") {
+        values.text = element.text || "";
+      }
+      const card = appendStep(values);
+      if (action === "input") {
+        const valueInput = card.querySelector("[name='step_value']");
+        valueInput?.focus();
+      }
+      pickerStatus.textContent = `${stepLabel(action)} step added.`;
+    }
+
+    function addScreenStep(action) {
+      const valuesByAction = {
+        wait: {action: "wait", timeout_ms: "1000"},
+        screenshot: {action: "screenshot", name: `screen-${stepList.querySelectorAll("[data-step-card]").length + 1}`},
+        collect_metrics: {action: "collect_metrics"},
+      };
+      appendStep(valuesByAction[action] || {action});
+      pickerStatus.textContent = `${stepLabel(action)} step added.`;
+    }
+
+    function stepLabel(action) {
+      return {
+        tap: "Tap",
+        input: "Input",
+        wait: "Wait",
+        assert_text: "Assert text",
+        assert_exists: "Assert exists",
+        screenshot: "Screenshot",
+        collect_metrics: "Collect metrics",
+      }[action] || action;
     }
 
     function applyElement(element, mode) {
@@ -463,8 +555,10 @@
       }
     });
     document.querySelector("[data-add-step]").addEventListener("click", () => {
-      stepList.append(template.content.cloneNode(true));
-      syncAllSteps();
+      appendStep();
+    });
+    document.querySelectorAll("[data-add-screen-step]").forEach((button) => {
+      button.addEventListener("click", () => addScreenStep(button.dataset.addScreenStep));
     });
     loadInstalledAppsButton?.addEventListener("click", () => {
       loadInstalledApps(true);

@@ -73,6 +73,8 @@ class WebSmokeTests(unittest.TestCase):
             self.assertIn("Screen Elements", builder_page)
             self.assertIn("Search elements", builder_page)
             self.assertIn("data-pick-element", builder_page)
+            self.assertIn("data-add-screen-step", builder_page)
+            self.assertIn("addStepFromElement", builder_page)
 
             with patch(
                 "sla_app.web.app._installed_apps_payload",
