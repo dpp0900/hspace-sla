@@ -1,20 +1,20 @@
 <!doctype html>
-<html lang="en">
+<html lang="ko">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block title %}SLA Test Runner{% endblock %}</title>
+    <title>{% block title %}SLA 테스트 러너{% endblock %}</title>
     <link rel="stylesheet" href="/static/styles.css">
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
   </head>
   <body>
     <header class="topbar">
-      <a class="brand" href="/">SLA Test Runner</a>
+      <a class="brand" href="/">SLA 테스트 러너</a>
       <nav class="nav">
-        <a class="{{ 'active' if active == 'dashboard' else '' }}" href="/">Dashboard</a>
-        <a class="{{ 'active' if active == 'suites' else '' }}" href="/suites">Test Suites</a>
-        <a class="{{ 'active' if active == 'guide' else '' }}" href="/guide">YAML Guide</a>
-        <a class="{{ 'active' if active == 'settings' else '' }}" href="/settings">Settings</a>
+        <a class="{{ 'active' if active == 'dashboard' else '' }}" href="/">대시보드</a>
+        <a class="{{ 'active' if active == 'suites' else '' }}" href="/suites">테스트 스위트</a>
+        <a class="{{ 'active' if active == 'guide' else '' }}" href="/guide">YAML 가이드</a>
+        <a class="{{ 'active' if active == 'settings' else '' }}" href="/settings">설정</a>
       </nav>
     </header>
     <main class="shell">

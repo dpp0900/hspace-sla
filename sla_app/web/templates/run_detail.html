@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Run {{ run.run_id }} · SLA Test Runner{% endblock %}
+{% block title %}실행 {{ run.run_id }} · SLA 테스트 러너{% endblock %}
 {% block content %}
 <section class="hero-band">
   <div>
@@ -11,22 +11,22 @@
 
 <section class="metric-grid">
   <div class="metric neutral">
-    <span>Duration</span>
+    <span>실행 시간</span>
     <strong>{{ run.duration_ms }} ms</strong>
   </div>
   <div class="metric {{ 'fail' if run.assertion_failures else 'pass' }}">
-    <span>Assertion Failures</span>
+    <span>검증 실패</span>
     <strong>{{ run.assertion_failures }}</strong>
   </div>
   <div class="metric {{ 'fail' if run.metric_violations else 'pass' }}">
-    <span>Metric Violations</span>
+    <span>지표 위반</span>
     <strong>{{ run.metric_violations }}</strong>
   </div>
 </section>
 
 {% if run.reasons %}
 <section class="panel">
-  <h2>SLA Violations</h2>
+  <h2>SLA 위반</h2>
   <ul class="reason-list">
     {% for reason in run.reasons %}
     <li>{{ reason }}</li>
@@ -46,11 +46,11 @@
       <thead>
         <tr>
           <th>#</th>
-          <th>Action</th>
-          <th>Status</th>
-          <th>Duration</th>
-          <th>Message</th>
-          <th>Artifact</th>
+          <th>동작</th>
+          <th>상태</th>
+          <th>실행 시간</th>
+          <th>메시지</th>
+          <th>산출물</th>
         </tr>
       </thead>
       <tbody>
@@ -64,7 +64,7 @@
           <td>
             {% set screenshot_url = step.screenshot_path|artifact_url %}
             {% if screenshot_url %}
-            <a href="{{ screenshot_url }}"><img class="thumb" src="{{ screenshot_url }}" alt="screenshot"></a>
+            <a href="{{ screenshot_url }}"><img class="thumb" src="{{ screenshot_url }}" alt="스크린샷"></a>
             {% endif %}
           </td>
         </tr>

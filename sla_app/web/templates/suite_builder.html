@@ -1,15 +1,15 @@
 {% extends "base.html" %}
-{% block title %}{{ title|default("Guided Builder") }} · SLA Test Runner{% endblock %}
+{% block title %}{{ title|default("쉬운 생성기") }} · SLA 테스트 러너{% endblock %}
 {% block content %}
 <section class="hero-band">
   <div>
-    <p class="eyebrow">{{ eyebrow|default("No-code suite") }}</p>
-    <h1>{{ title|default("Guided Builder") }}</h1>
+    <p class="eyebrow">{{ eyebrow|default("코드 없이 스위트 만들기") }}</p>
+    <h1>{{ title|default("쉬운 생성기") }}</h1>
   </div>
   <div class="actions">
-    <a class="button" href="/guide" target="_blank" rel="noreferrer">YAML Guide</a>
-    <a class="button" href="{{ yaml_url|default('/suites/new') }}">YAML Editor</a>
-    <a class="button" href="{{ back_url|default('/suites') }}">Back</a>
+    <a class="button" href="/guide" target="_blank" rel="noreferrer">YAML 가이드</a>
+    <a class="button" href="{{ yaml_url|default('/suites/new') }}">YAML 편집기</a>
+    <a class="button" href="{{ back_url|default('/suites') }}">뒤로</a>
   </div>
 </section>
 
@@ -25,15 +25,15 @@
   <section class="builder-grid">
     <div class="panel builder-panel">
       <div class="section-head">
-        <h2>Suite</h2>
+        <h2>스위트</h2>
       </div>
       <div class="field-grid">
         <label>
-          <span>Suite name</span>
+          <span>스위트 이름</span>
           <input type="text" name="suite_name" value="{{ builder.suite_name }}" required>
         </label>
         <label>
-          <span>Scenario name</span>
+          <span>시나리오 이름</span>
           <input type="text" name="scenario_name" value="{{ builder.scenario_name }}" required>
         </label>
       </div>
@@ -41,7 +41,7 @@
 
     <div class="panel builder-panel">
       <div class="section-head">
-        <h2>Target</h2>
+        <h2>테스트 대상</h2>
       </div>
       <div class="segmented">
         <label>
@@ -50,41 +50,41 @@
         </label>
         <label>
           <input type="radio" name="target_mode" value="installed" {{ 'checked' if builder.target_mode == 'installed' else '' }}>
-          <span>Installed app</span>
+          <span>설치된 앱</span>
         </label>
       </div>
       <div class="target-fields" data-target-mode="apk">
         <label>
-          <span>APK path</span>
+          <span>APK 경로</span>
           <input type="text" name="apk" value="{{ builder.apk }}">
         </label>
       </div>
       <div class="target-fields" data-target-mode="installed">
         <div class="target-tools">
-          <p class="section-subtitle" data-installed-app-status>Select an installed app or enter package/activity manually.</p>
-          <button class="button" type="button" data-load-installed-apps>Load Installed Apps</button>
+          <p class="section-subtitle" data-installed-app-status>설치된 앱을 선택하거나 package/activity를 직접 입력하세요.</p>
+          <button class="button" type="button" data-load-installed-apps>설치된 앱 불러오기</button>
         </div>
         <div class="installed-app-list" data-installed-app-list data-source-url="{{ installed_apps_url|default('/android/installed-apps') }}"></div>
         <div class="field-grid">
           <label>
-            <span>Package</span>
+            <span>패키지</span>
             <input type="text" name="app_package" value="{{ builder.app_package }}">
           </label>
           <label>
-            <span>Activity</span>
+            <span>실행 Activity</span>
             <input type="text" name="app_activity" value="{{ builder.app_activity }}">
           </label>
           <label>
-            <span>Wait activity</span>
+            <span>대기 Activity</span>
             <input type="text" name="app_wait_activity" value="{{ builder.app_wait_activity }}">
           </label>
           <label>
-            <span>Wait package</span>
+            <span>대기 Package</span>
             <input type="text" name="app_wait_package" value="{{ builder.app_wait_package }}">
           </label>
           <label class="checkbox-field">
             <input type="checkbox" name="no_reset" value="true" {{ 'checked' if builder.no_reset else '' }}>
-            <span>Keep app data</span>
+            <span>앱 데이터 유지</span>
           </label>
         </div>
       </div>
@@ -96,23 +96,23 @@
       </div>
       <div class="field-grid compact">
         <label>
-          <span>Max duration ms</span>
+          <span>최대 실행 시간(ms)</span>
           <input type="number" min="0" name="max_duration_ms" value="{{ builder.max_duration_ms }}">
         </label>
         <label>
-          <span>Required assertions</span>
+          <span>필수 검증 수</span>
           <input type="number" min="0" name="required_assertions" value="{{ builder.required_assertions }}">
         </label>
         <label>
-          <span>Assertion failures</span>
+          <span>허용 검증 실패</span>
           <input type="number" min="0" name="max_assertion_failures" value="{{ builder.max_assertion_failures }}">
         </label>
         <label>
-          <span>Metric violations</span>
+          <span>허용 지표 위반</span>
           <input type="number" min="0" name="max_metric_violations" value="{{ builder.max_metric_violations }}">
         </label>
         <label>
-          <span>Memory max MB</span>
+          <span>최대 메모리(MB)</span>
           <input type="number" min="0" step="0.1" name="memory_mb_max" value="{{ builder.memory_mb_max }}">
         </label>
       </div>
@@ -122,27 +122,27 @@
   <section class="panel builder-panel element-picker" data-element-picker data-source-url="{{ inspect_url }}">
     <div class="section-head">
       <div>
-        <h2>Screen Elements</h2>
-        <p class="section-subtitle" data-picker-status>Scan the selected APK or installed app, then search and pick an element.</p>
+        <h2>화면 요소</h2>
+        <p class="section-subtitle" data-picker-status>선택한 APK 또는 설치된 앱 화면을 스캔한 뒤 요소를 검색하고 선택하세요.</p>
       </div>
-      <button class="button" type="button" data-scan-elements>Scan Screen</button>
+      <button class="button" type="button" data-scan-elements>화면 스캔</button>
     </div>
     <label class="search-field">
-      <span>Search elements</span>
-      <input type="search" data-element-search placeholder="Search text, selector, role, class">
+      <span>요소 검색</span>
+      <input type="search" data-element-search placeholder="텍스트, selector, 역할, class 검색">
     </label>
     <div class="quick-step-actions">
-      <button class="button" type="button" data-add-screen-step="wait">Add wait</button>
-      <button class="button" type="button" data-add-screen-step="screenshot">Add screenshot</button>
-      <button class="button" type="button" data-add-screen-step="collect_metrics">Add metrics</button>
+      <button class="button" type="button" data-add-screen-step="wait">대기 추가</button>
+      <button class="button" type="button" data-add-screen-step="screenshot">스크린샷 추가</button>
+      <button class="button" type="button" data-add-screen-step="collect_metrics">지표 수집 추가</button>
     </div>
     <div class="element-list" data-element-list></div>
   </section>
 
   <section class="panel builder-panel">
     <div class="section-head">
-      <h2>Steps</h2>
-      <button class="button" type="button" data-add-step>Add Step</button>
+      <h2>스텝</h2>
+      <button class="button" type="button" data-add-step>스텝 추가</button>
     </div>
     <div class="step-list" data-step-list>
       {% for step in builder.steps %}
@@ -150,7 +150,7 @@
       {% endfor %}
     </div>
     <div class="form-actions">
-      <button class="button primary" type="submit">{{ submit_label|default("Save Suite") }}</button>
+      <button class="button primary" type="submit">{{ submit_label|default("스위트 저장") }}</button>
     </div>
   </section>
 </form>
@@ -222,16 +222,16 @@
         return;
       }
       installedAppsLoaded = true;
-      installedAppStatus.textContent = "Loading installed apps from the emulator...";
+      installedAppStatus.textContent = "에뮬레이터에서 설치된 앱을 불러오는 중입니다...";
       installedAppList.replaceChildren();
       try {
         const response = await fetch(installedAppList.dataset.sourceUrl, {headers: {"Accept": "application/json"}});
         const payload = await response.json();
         if (!response.ok) {
-          throw new Error(payload.error || "Could not load installed apps.");
+          throw new Error(payload.error || "설치된 앱을 불러오지 못했습니다.");
         }
         renderInstalledApps(payload.apps || []);
-        installedAppStatus.textContent = `${(payload.apps || []).length} launchable apps found on ${payload.device || "device"}.`;
+        installedAppStatus.textContent = `${payload.device || "기기"}에서 실행 가능한 앱 ${(payload.apps || []).length}개를 찾았습니다.`;
       } catch (error) {
         installedAppsLoaded = false;
         installedAppStatus.textContent = error.message;
@@ -243,7 +243,7 @@
       if (!apps.length) {
         const empty = document.createElement("p");
         empty.className = "empty";
-        empty.textContent = "No launchable installed apps found.";
+        empty.textContent = "실행 가능한 설치 앱을 찾지 못했습니다.";
         installedAppList.append(empty);
         return;
       }
@@ -296,13 +296,13 @@
       const suiteNameInput = document.querySelector("input[name='suite_name']");
       const scenarioNameInput = document.querySelector("input[name='scenario_name']");
       const label = app.label || app.package;
-      if (suiteNameInput && (!suiteNameInput.value || suiteNameInput.value === "Android Smoke")) {
-        suiteNameInput.value = `${label} Installed App`;
+      if (suiteNameInput && (!suiteNameInput.value || suiteNameInput.value === "Android Smoke" || suiteNameInput.value === "Android 기본 테스트")) {
+        suiteNameInput.value = `${label} 설치 앱`;
       }
-      if (scenarioNameInput && (!scenarioNameInput.value || scenarioNameInput.value === "launch and capture")) {
-        scenarioNameInput.value = `launch ${label}`;
+      if (scenarioNameInput && (!scenarioNameInput.value || scenarioNameInput.value === "launch and capture" || scenarioNameInput.value === "실행 후 캡처")) {
+        scenarioNameInput.value = `${label} 실행`;
       }
-      installedAppStatus.textContent = `${label} selected.`;
+      installedAppStatus.textContent = `${label} 앱을 선택했습니다.`;
     }
 
     async function loadElements(force = false) {
@@ -310,17 +310,17 @@
         return;
       }
       pickerLoaded = true;
-      pickerStatus.textContent = "Scanning current screen...";
+      pickerStatus.textContent = "현재 화면을 스캔하는 중입니다...";
       pickerList.replaceChildren();
       try {
         const response = await fetch(elementScanUrl(), {headers: {"Accept": "application/json"}});
         const payload = await response.json();
         if (!response.ok) {
-          throw new Error(payload.error || "Could not scan screen.");
+          throw new Error(payload.error || "화면을 스캔하지 못했습니다.");
         }
         scannedElements = payload.elements || [];
         renderFilteredElements();
-        pickerStatus.textContent = `${scannedElements.length} elements found.`;
+        pickerStatus.textContent = `요소 ${scannedElements.length}개를 찾았습니다.`;
       } catch (error) {
         pickerLoaded = false;
         pickerStatus.textContent = error.message;
@@ -347,8 +347,8 @@
       renderElements(filtered);
       if (pickerStatus && scannedElements.length) {
         pickerStatus.textContent = query
-          ? `${filtered.length} of ${scannedElements.length} elements matched.`
-          : `${scannedElements.length} elements found.`;
+          ? `요소 ${scannedElements.length}개 중 ${filtered.length}개가 일치합니다.`
+          : `요소 ${scannedElements.length}개를 찾았습니다.`;
       }
     }
 
@@ -369,7 +369,7 @@
       if (!elements.length) {
         const empty = document.createElement("p");
         empty.className = "empty";
-        empty.textContent = "No selectable elements found.";
+        empty.textContent = "선택할 수 있는 요소가 없습니다.";
         pickerList.append(empty);
         return;
       }
@@ -378,7 +378,7 @@
         card.className = "element-card";
 
         const title = document.createElement("strong");
-        title.textContent = element.label || element.selector || element.text || "Element";
+        title.textContent = element.label || element.selector || element.text || "요소";
         card.append(title);
 
         const meta = document.createElement("p");
@@ -394,24 +394,24 @@
         const actions = document.createElement("div");
         actions.className = "actions";
         if (element.selector) {
-          actions.append(elementActionButton("Tap", () => addStepFromElement(element, "tap", "selector")));
-          actions.append(elementActionButton("Input", () => addStepFromElement(element, "input", "selector")));
-          actions.append(elementActionButton("Assert exists", () => addStepFromElement(element, "assert_exists", "selector")));
+          actions.append(elementActionButton("탭", () => addStepFromElement(element, "tap", "selector")));
+          actions.append(elementActionButton("입력", () => addStepFromElement(element, "input", "selector")));
+          actions.append(elementActionButton("존재 검증", () => addStepFromElement(element, "assert_exists", "selector")));
 
           const selectorButton = document.createElement("button");
           selectorButton.className = "button";
           selectorButton.type = "button";
-          selectorButton.textContent = "Fill selected";
+          selectorButton.textContent = "선택 스텝에 채우기";
           selectorButton.addEventListener("click", () => applyElement(element, "selector"));
           actions.append(selectorButton);
         }
         if (element.text) {
-          actions.append(elementActionButton("Assert text", () => addStepFromElement(element, "assert_text", "text")));
+          actions.append(elementActionButton("텍스트 검증", () => addStepFromElement(element, "assert_text", "text")));
 
           const textButton = document.createElement("button");
           textButton.className = "button";
           textButton.type = "button";
-          textButton.textContent = "Fill text";
+          textButton.textContent = "텍스트 채우기";
           textButton.addEventListener("click", () => applyElement(element, "text"));
           actions.append(textButton);
         }
@@ -476,7 +476,7 @@
         const valueInput = card.querySelector("[name='step_value']");
         valueInput?.focus();
       }
-      pickerStatus.textContent = `${stepLabel(action)} step added.`;
+      pickerStatus.textContent = `${stepLabel(action)} 스텝을 추가했습니다.`;
     }
 
     function addScreenStep(action) {
@@ -486,18 +486,18 @@
         collect_metrics: {action: "collect_metrics"},
       };
       appendStep(valuesByAction[action] || {action});
-      pickerStatus.textContent = `${stepLabel(action)} step added.`;
+      pickerStatus.textContent = `${stepLabel(action)} 스텝을 추가했습니다.`;
     }
 
     function stepLabel(action) {
       return {
-        tap: "Tap",
-        input: "Input",
-        wait: "Wait",
-        assert_text: "Assert text",
-        assert_exists: "Assert exists",
-        screenshot: "Screenshot",
-        collect_metrics: "Collect metrics",
+        tap: "탭",
+        input: "입력",
+        wait: "대기",
+        assert_text: "텍스트 검증",
+        assert_exists: "요소 존재 검증",
+        screenshot: "스크린샷",
+        collect_metrics: "지표 수집",
       }[action] || action;
     }
 
@@ -521,7 +521,7 @@
           selectorInput.value = "";
         }
       }
-      pickerStatus.textContent = "Element applied to selected step.";
+      pickerStatus.textContent = "선택한 스텝에 요소를 채웠습니다.";
     }
 
     targetRadios.forEach((radio) => radio.addEventListener("change", syncTarget));

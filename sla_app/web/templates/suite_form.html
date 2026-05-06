@@ -1,17 +1,17 @@
 {% extends "base.html" %}
-{% block title %}{{ title }} · SLA Test Runner{% endblock %}
+{% block title %}{{ title }} · SLA 테스트 러너{% endblock %}
 {% block content %}
 <section class="hero-band">
   <div>
-    <p class="eyebrow">Suite YAML</p>
+    <p class="eyebrow">스위트 YAML</p>
     <h1>{{ title }}</h1>
   </div>
   <div class="actions">
-    <a class="button" href="/guide" target="_blank" rel="noreferrer">YAML Guide</a>
+    <a class="button" href="/guide" target="_blank" rel="noreferrer">YAML 가이드</a>
     {% if helper_url %}
-    <a class="button" href="{{ helper_url }}">Use Helper</a>
+    <a class="button" href="{{ helper_url }}">쉬운 편집 사용</a>
     {% endif %}
-    <a class="button" href="{{ back_url|default('/suites') }}">Back</a>
+    <a class="button" href="{{ back_url|default('/suites') }}">뒤로</a>
   </div>
 </section>
 
@@ -23,7 +23,7 @@
     <label for="yaml_text">YAML</label>
     <textarea id="yaml_text" name="yaml_text" spellcheck="false">{{ yaml_text }}</textarea>
     <div class="form-actions">
-      <button class="button primary" type="submit">Save</button>
+      <button class="button primary" type="submit">저장</button>
     </div>
   </form>
 </section>

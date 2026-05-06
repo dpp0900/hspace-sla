@@ -50,7 +50,7 @@ def create_app(base_dir: str | Path | None = None) -> FastAPI:
     store = SqliteStore(app_base_dir)
     _import_existing_suites(store)
 
-    app = FastAPI(title="SLA Test Runner")
+    app = FastAPI(title="SLA 테스트 러너")
     app.state.store = store
 
     templates = Jinja2Templates(directory=str(PACKAGE_DIR / "templates"))
@@ -91,12 +91,12 @@ def create_app(base_dir: str | Path | None = None) -> FastAPI:
             "suite_builder.html",
             {
                 "active": "suites",
-                "title": "Guided Builder",
-                "eyebrow": "No-code suite",
+                "title": "쉬운 생성기",
+                "eyebrow": "코드 없이 스위트 만들기",
                 "action": "/suites/builder",
                 "back_url": "/suites",
                 "yaml_url": "/suites/new",
-                "submit_label": "Save Suite",
+                "submit_label": "스위트 저장",
                 "inspect_url": "/android/elements",
                 "installed_apps_url": "/android/installed-apps",
                 "builder": _default_builder_state(),
@@ -118,12 +118,12 @@ def create_app(base_dir: str | Path | None = None) -> FastAPI:
                 "suite_builder.html",
                 {
                     "active": "suites",
-                    "title": "Guided Builder",
-                    "eyebrow": "No-code suite",
+                    "title": "쉬운 생성기",
+                    "eyebrow": "코드 없이 스위트 만들기",
                     "action": "/suites/builder",
                     "back_url": "/suites",
                     "yaml_url": "/suites/new",
-                    "submit_label": "Save Suite",
+                    "submit_label": "스위트 저장",
                     "inspect_url": "/android/elements",
                     "installed_apps_url": "/android/installed-apps",
                     "builder": builder,
@@ -142,7 +142,7 @@ def create_app(base_dir: str | Path | None = None) -> FastAPI:
             "suite_form.html",
             {
                 "active": "suites",
-                "title": "New Suite",
+                "title": "새 스위트",
                 "action": "/suites",
                 "yaml_text": DEFAULT_SUITE_YAML,
                 "error": None,
@@ -159,7 +159,7 @@ def create_app(base_dir: str | Path | None = None) -> FastAPI:
                 "suite_form.html",
                 {
                     "active": "suites",
-                    "title": "New Suite",
+                    "title": "새 스위트",
                     "action": "/suites",
                     "yaml_text": yaml_text,
                     "error": str(exc),
@@ -212,24 +212,24 @@ def create_app(base_dir: str | Path | None = None) -> FastAPI:
             "suite_builder.html",
             {
                 "active": "suites",
-                "title": "Edit with Helper",
-                "eyebrow": "Guided edit",
+                "title": "쉬운 편집",
+                "eyebrow": "가이드 편집",
                 "action": f"/suites/{suite_id}/edit/helper",
                 "back_url": f"/suites/{suite_id}/edit",
                 "yaml_url": f"/suites/{suite_id}/edit/yaml",
-                "submit_label": "Save Changes",
+                "submit_label": "변경 저장",
                 "inspect_url": "/android/elements",
                 "installed_apps_url": "/android/installed-apps",
                 "builder": _builder_state_from_suite(suite),
                 "error": None,
-                "notice": "Helper edits the supported fields for this suite and saves back to the same suite ID.",
+                "notice": "쉬운 편집기는 지원하는 필드만 수정하고 같은 스위트 ID로 저장합니다.",
             },
         )
 
     @app.post("/suites/{suite_id}/edit/helper")
     async def update_suite_from_helper(request: Request, suite_id: str):
         if store.get_suite_summary(suite_id) is None:
-            raise HTTPException(status_code=404, detail="suite not found")
+            raise HTTPException(status_code=404, detail="스위트를 찾지 못했습니다")
         form = await request.form()
         builder = _builder_state_from_form(form)
         try:
@@ -241,12 +241,12 @@ def create_app(base_dir: str | Path | None = None) -> FastAPI:
                 "suite_builder.html",
                 {
                     "active": "suites",
-                    "title": "Edit with Helper",
-                    "eyebrow": "Guided edit",
+                    "title": "쉬운 편집",
+                    "eyebrow": "가이드 편집",
                     "action": f"/suites/{suite_id}/edit/helper",
                     "back_url": f"/suites/{suite_id}/edit",
                     "yaml_url": f"/suites/{suite_id}/edit/yaml",
-                    "submit_label": "Save Changes",
+                    "submit_label": "변경 저장",
                     "inspect_url": "/android/elements",
                     "installed_apps_url": "/android/installed-apps",
                     "builder": builder,
@@ -267,7 +267,7 @@ def create_app(base_dir: str | Path | None = None) -> FastAPI:
             "suite_form.html",
             {
                 "active": "suites",
-                "title": "Edit YAML",
+                "title": "YAML 편집",
                 "action": f"/suites/{suite_id}/edit/yaml",
                 "yaml_text": yaml_text,
                 "error": None,
@@ -291,7 +291,7 @@ def create_app(base_dir: str | Path | None = None) -> FastAPI:
                 "suite_form.html",
                 {
                     "active": "suites",
-                    "title": "Edit YAML",
+                    "title": "YAML 편집",
                     "action": f"/suites/{suite_id}/edit/yaml",
                     "yaml_text": yaml_text,
                     "error": str(exc),
@@ -357,7 +357,7 @@ def create_app(base_dir: str | Path | None = None) -> FastAPI:
     @app.post("/suites/{suite_id}/delete")
     async def delete_suite(suite_id: str):
         if not store.delete_suite(suite_id):
-            raise HTTPException(status_code=404, detail="suite not found")
+            raise HTTPException(status_code=404, detail="스위트를 찾지 못했습니다")
         return RedirectResponse("/suites", status_code=303)
 
     @app.post("/suites/{suite_id}/runs")
@@ -385,7 +385,7 @@ def create_app(base_dir: str | Path | None = None) -> FastAPI:
     async def run_detail(request: Request, run_id: str):
         detail = store.get_run_detail(run_id)
         if detail is None:
-            raise HTTPException(status_code=404, detail="run not found")
+            raise HTTPException(status_code=404, detail="실행 결과를 찾지 못했습니다")
         return templates.TemplateResponse(
             request,
             "run_detail.html",
@@ -451,7 +451,7 @@ def _suite_yaml_or_404(store: SqliteStore, suite_id: str) -> str:
 def _suite_summary_or_404(store: SqliteStore, suite_id: str):
     summary = store.get_suite_summary(suite_id)
     if summary is None:
-        raise HTTPException(status_code=404, detail="suite not found")
+        raise HTTPException(status_code=404, detail="스위트를 찾지 못했습니다")
     return summary
 
 
@@ -493,7 +493,7 @@ def _app_target_from_scan_request(
 ) -> AppTarget:
     if target_mode == "installed":
         if not app_package or not app_activity:
-            raise ValueError("Select an installed app or enter package/activity first.")
+            raise ValueError("먼저 설치된 앱을 선택하거나 package/activity를 입력하세요.")
         return AppTarget(
             platform="android",
             app_package=app_package.strip(),
@@ -504,13 +504,13 @@ def _app_target_from_scan_request(
         )
 
     if not apk:
-        raise ValueError("Enter an APK path before scanning elements.")
+        raise ValueError("화면을 스캔하기 전에 APK 경로를 입력하세요.")
     return AppTarget(platform="android", apk=apk.strip(), no_reset=no_reset)
 
 
 def _inspect_app_target_elements(app_target: AppTarget, source_path: Path | None = None) -> dict[str, object]:
     suite = TestSuite(
-        name="Element Scan",
+        name="화면 요소 스캔",
         app=app_target,
         scenarios=[Scenario(name="scan", steps=[ActionStep(action="launch_app")])],
         source_path=source_path,
@@ -552,10 +552,10 @@ def _android_discovery_config() -> LaunchConfig:
 
 def _system_exit_message(exc: SystemExit) -> str:
     if isinstance(exc.code, int):
-        return f"launcher exited with code {exc.code}"
+        return f"런처가 코드 {exc.code}로 종료되었습니다"
     if exc.code:
         return str(exc.code)
-    return "launcher exited"
+    return "런처가 종료되었습니다"
 
 
 def _friendly_appium_error(exc: Exception) -> str:
@@ -564,9 +564,9 @@ def _friendly_appium_error(exc: Exception) -> str:
         message = message.split("Stacktrace:", 1)[0].strip()
     if "Original error:" in message and "Cannot start" in message:
         return (
-            "Could not start the selected app. The app may open through another activity; "
-            "keep Wait activity and Wait package as * or choose a different launch activity. "
-            f"Details: {message}"
+            "선택한 앱을 시작하지 못했습니다. 앱이 다른 activity/package 화면으로 열릴 수 있습니다. "
+            "대기 Activity와 대기 Package를 *로 두거나 다른 실행 Activity를 선택하세요. "
+            f"상세: {message}"
         )
     return message or exc.__class__.__name__
 
@@ -582,7 +582,7 @@ def _import_existing_suites(store: SqliteStore) -> None:
 
 def _default_builder_state() -> dict[str, object]:
     return {
-        "suite_name": "Android Smoke",
+        "suite_name": "Android 기본 테스트",
         "target_mode": "apk",
         "apk": "test-apk/build/hspace-test-app-debug.apk",
         "app_package": "",
@@ -595,7 +595,7 @@ def _default_builder_state() -> dict[str, object]:
         "max_metric_violations": "0",
         "required_assertions": "",
         "memory_mb_max": "",
-        "scenario_name": "launch and capture",
+        "scenario_name": "실행 후 캡처",
         "steps": [
             {"action": "launch_app"},
             {"action": "wait", "timeout_ms": "1000"},
@@ -644,16 +644,16 @@ def _builder_step_from_model(step: ActionStep) -> dict[str, str]:
 def _builder_compatibility(suite: TestSuite) -> tuple[bool, list[str]]:
     reasons: list[str] = []
     if len(suite.scenarios) != 1:
-        reasons.append("Helper supports one scenario per suite.")
+        reasons.append("쉬운 편집기는 스위트당 시나리오 1개만 지원합니다.")
     elif suite.scenarios[0].thresholds is not None:
-        reasons.append("Scenario-level thresholds require YAML editing.")
+        reasons.append("시나리오별 SLA 기준은 YAML 편집이 필요합니다.")
 
     metric_names = set(suite.thresholds.metrics)
     memory_limit = suite.thresholds.metrics.get("memory_mb")
     if metric_names - {"memory_mb"}:
-        reasons.append("Custom suite-level metric thresholds require YAML editing.")
+        reasons.append("커스텀 스위트 지표 기준은 YAML 편집이 필요합니다.")
     if memory_limit and memory_limit.min is not None:
-        reasons.append("Memory minimum thresholds require YAML editing.")
+        reasons.append("메모리 최소 기준은 YAML 편집이 필요합니다.")
 
     supported_step_keys = {"action", "selector", "text", "value", "timeout_ms", "name", "metric", "min", "max"}
     for scenario in suite.scenarios:
@@ -661,7 +661,7 @@ def _builder_compatibility(suite: TestSuite) -> tuple[bool, list[str]]:
             extra_keys = set(step.raw) - supported_step_keys
             if extra_keys:
                 keys = ", ".join(sorted(extra_keys))
-                reasons.append(f"Step {index} has advanced YAML fields: {keys}.")
+                reasons.append(f"{index}번 스텝에 고급 YAML 필드가 있습니다: {keys}.")
                 break
         if reasons:
             break

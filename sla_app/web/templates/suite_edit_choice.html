@@ -1,46 +1,46 @@
 {% extends "base.html" %}
-{% block title %}Edit {{ suite.name }} · SLA Test Runner{% endblock %}
+{% block title %}{{ suite.name }} 편집 · SLA 테스트 러너{% endblock %}
 {% block content %}
 <section class="hero-band">
   <div>
-    <p class="eyebrow">Choose edit mode</p>
+    <p class="eyebrow">편집 방식 선택</p>
     <h1>{{ suite.name }}</h1>
   </div>
   <div class="actions">
     <form action="/suites/{{ suite.suite_id }}/runs" method="post">
-      <button class="button primary" type="submit" hx-confirm="Run {{ suite.name }} now?">Run</button>
+      <button class="button primary" type="submit" hx-confirm="{{ suite.name }} 스위트를 지금 실행할까요?">실행</button>
     </form>
-    <a class="button" href="/suites">Back</a>
+    <a class="button" href="/suites">뒤로</a>
   </div>
 </section>
 
 <section class="mode-grid">
   {% if helper_available %}
   <a class="mode-card recommended" href="/suites/{{ suite.suite_id }}/edit/helper">
-    <span class="mode-tag">Recommended</span>
-    <h2>Guided Helper</h2>
-    <p>Edit the app target, SLA limits, and steps with form controls.</p>
-    <span class="button primary">Open Helper</span>
+    <span class="mode-tag">추천</span>
+    <h2>쉬운 편집</h2>
+    <p>앱 대상, SLA 기준, 스텝을 폼으로 수정합니다.</p>
+    <span class="button primary">쉬운 편집 열기</span>
   </a>
   {% else %}
   <article class="mode-card disabled" aria-disabled="true">
-    <span class="mode-tag">Unavailable</span>
-    <h2>Guided Helper</h2>
-    <p>This suite uses advanced YAML that the helper cannot safely preserve.</p>
+    <span class="mode-tag">사용 불가</span>
+    <h2>쉬운 편집</h2>
+    <p>이 스위트는 쉬운 편집기가 안전하게 보존할 수 없는 고급 YAML을 사용합니다.</p>
     <ul class="mode-reasons">
       {% for reason in helper_reasons %}
       <li>{{ reason }}</li>
       {% endfor %}
     </ul>
-    <span class="button disabled">Use YAML</span>
+    <span class="button disabled">YAML 사용</span>
   </article>
   {% endif %}
 
   <a class="mode-card" href="/suites/{{ suite.suite_id }}/edit/yaml">
-    <span class="mode-tag">Advanced</span>
-    <h2>YAML Editor</h2>
-    <p>Edit the exact YAML file for multiple scenarios or custom fields.</p>
-    <span class="button">Open YAML</span>
+    <span class="mode-tag">고급</span>
+    <h2>YAML 편집기</h2>
+    <p>여러 시나리오나 커스텀 필드가 필요하면 YAML을 직접 편집합니다.</p>
+    <span class="button">YAML 열기</span>
   </a>
 </section>
 
@@ -55,7 +55,7 @@
       <dd>{{ suite.yaml_path }}</dd>
     </div>
     <div>
-      <dt>Updated</dt>
+      <dt>수정일</dt>
       <dd>{{ suite.updated_at }}</dd>
     </div>
   </dl>

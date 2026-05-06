@@ -1,14 +1,14 @@
 {% extends "base.html" %}
-{% block title %}Test Suites · SLA Test Runner{% endblock %}
+{% block title %}테스트 스위트 · SLA 테스트 러너{% endblock %}
 {% block content %}
 <section class="hero-band">
   <div>
-    <p class="eyebrow">YAML and Form</p>
-    <h1>Test Suites</h1>
+    <p class="eyebrow">YAML / 폼</p>
+    <h1>테스트 스위트</h1>
   </div>
   <div class="actions">
-    <a class="button primary" href="/suites/builder">Guided Builder</a>
-    <a class="button" href="/suites/new">YAML Editor</a>
+    <a class="button primary" href="/suites/builder">쉬운 생성기</a>
+    <a class="button" href="/suites/new">YAML 편집기</a>
   </div>
 </section>
 
@@ -29,19 +29,19 @@
             <dd>{{ suite.yaml_path }}</dd>
           </div>
           <div>
-            <dt>Updated</dt>
+            <dt>수정일</dt>
             <dd>{{ suite.updated_at }}</dd>
           </div>
         </dl>
       </div>
       <div class="actions">
         <form action="/suites/{{ suite.suite_id }}/runs" method="post">
-          <button class="button primary" type="submit" hx-confirm="Run {{ suite.name }} now?">Run</button>
+          <button class="button primary" type="submit" hx-confirm="{{ suite.name }} 스위트를 지금 실행할까요?">실행</button>
         </form>
-        <a class="button" href="/suites/{{ suite.suite_id }}/edit">Edit</a>
-        <a class="button" href="/suites/{{ suite.suite_id }}/export">Export</a>
+        <a class="button" href="/suites/{{ suite.suite_id }}/edit">편집</a>
+        <a class="button" href="/suites/{{ suite.suite_id }}/export">내보내기</a>
         <form action="/suites/{{ suite.suite_id }}/delete" method="post">
-          <button class="button danger" type="submit" hx-confirm="Delete {{ suite.name }}? Run history and artifacts will remain.">Delete</button>
+          <button class="button danger" type="submit" hx-confirm="{{ suite.name }} 스위트를 삭제할까요? 실행 기록과 산출물은 유지됩니다.">삭제</button>
         </form>
       </div>
     </article>
@@ -49,11 +49,11 @@
   </div>
   {% else %}
   <div class="empty-state">
-    <h2>No suites yet</h2>
-    <p>Create one with the guided form, or paste YAML directly.</p>
+    <h2>아직 스위트가 없습니다</h2>
+    <p>쉬운 생성기로 만들거나 YAML을 직접 붙여넣어 시작하세요.</p>
     <div class="actions">
-      <a class="button primary" href="/suites/builder">Guided Builder</a>
-      <a class="button" href="/suites/new">YAML Editor</a>
+      <a class="button primary" href="/suites/builder">쉬운 생성기</a>
+      <a class="button" href="/suites/new">YAML 편집기</a>
     </div>
   </div>
   {% endif %}

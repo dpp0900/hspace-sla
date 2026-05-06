@@ -1,14 +1,14 @@
 {% extends "base.html" %}
-{% block title %}Dashboard · SLA Test Runner{% endblock %}
+{% block title %}대시보드 · SLA 테스트 러너{% endblock %}
 {% block content %}
 <section class="hero-band">
   <div>
-    <p class="eyebrow">Local Android SLA</p>
-    <h1>Dashboard</h1>
+    <p class="eyebrow">로컬 Android SLA</p>
+    <h1>대시보드</h1>
   </div>
   <div class="actions">
-    <a class="button primary" href="/suites/builder">New Suite</a>
-    <a class="button" href="/suites">Manage Suites</a>
+    <a class="button primary" href="/suites/builder">새 스위트 만들기</a>
+    <a class="button" href="/suites">스위트 관리</a>
   </div>
 </section>
 
@@ -22,26 +22,26 @@
     <strong>{{ counts.get("FAIL", 0) }}</strong>
   </div>
   <div class="metric neutral">
-    <span>Total</span>
+    <span>전체</span>
     <strong>{{ counts.get("PASS", 0) + counts.get("FAIL", 0) }}</strong>
   </div>
 </section>
 
 <section class="panel">
   <div class="section-head">
-    <h2>Recent Runs</h2>
+    <h2>최근 실행</h2>
   </div>
   {% if runs %}
   <div class="table-wrap">
     <table>
       <thead>
         <tr>
-          <th>Status</th>
-          <th>Suite</th>
-          <th>Duration</th>
-          <th>Assertions</th>
-          <th>Metrics</th>
-          <th>Started</th>
+          <th>상태</th>
+          <th>스위트</th>
+          <th>실행 시간</th>
+          <th>검증 실패</th>
+          <th>지표 위반</th>
+          <th>시작 시간</th>
         </tr>
       </thead>
       <tbody>
@@ -60,11 +60,11 @@
   </div>
   {% else %}
   <div class="empty-state compact">
-    <h2>No runs yet</h2>
-    <p>Create a suite, then run it to see SLA results here.</p>
+    <h2>아직 실행 결과가 없습니다</h2>
+    <p>스위트를 만든 뒤 실행하면 SLA 결과가 여기에 표시됩니다.</p>
     <div class="actions">
-      <a class="button primary" href="/suites/builder">New Suite</a>
-      <a class="button" href="/suites">Test Suites</a>
+      <a class="button primary" href="/suites/builder">새 스위트 만들기</a>
+      <a class="button" href="/suites">테스트 스위트</a>
     </div>
   </div>
   {% endif %}

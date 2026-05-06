@@ -1,17 +1,17 @@
 {% extends "base.html" %}
-{% block title %}Settings · SLA Test Runner{% endblock %}
+{% block title %}설정 · SLA 테스트 러너{% endblock %}
 {% block content %}
 <section class="hero-band">
   <div>
-    <p class="eyebrow">Android Environment</p>
-    <h1>Settings</h1>
+    <p class="eyebrow">Android 환경</p>
+    <h1>설정</h1>
   </div>
 </section>
 
 <section class="panel">
   <div class="settings-grid">
     <div>
-      <span class="label">Host Arch</span>
+      <span class="label">호스트 아키텍처</span>
       <strong>{{ host_arch }}</strong>
     </div>
     <div>
@@ -27,7 +27,7 @@
       <strong class="{{ 'ok' if appium_ready else 'bad' }}">{{ appium_url }}</strong>
     </div>
     <div>
-      <span class="label">AVD Home</span>
+      <span class="label">AVD 위치</span>
       <strong>{{ avd_home }}</strong>
     </div>
   </div>
@@ -45,10 +45,10 @@
     <table>
       <thead>
         <tr>
-          <th>Name</th>
+          <th>이름</th>
           <th>ABI</th>
           <th>CPU</th>
-          <th>System Image</th>
+          <th>시스템 이미지</th>
         </tr>
       </thead>
       <tbody>
@@ -64,7 +64,7 @@
     </table>
   </div>
   {% else %}
-  <p class="empty">No AVDs found.</p>
+  <p class="empty">AVD를 찾지 못했습니다.</p>
   {% endif %}
 </section>
 {% endblock %}

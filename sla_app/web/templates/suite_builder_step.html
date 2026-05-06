@@ -1,61 +1,61 @@
 <article class="step-card" data-step-card>
   <div class="step-card-head">
     <label>
-      <span>Action</span>
+      <span>동작</span>
       <select name="step_action">
         {% for value, label in [
-          ("launch_app", "Launch app"),
-          ("tap", "Tap"),
-          ("input", "Input"),
-          ("wait", "Wait"),
-          ("assert_text", "Assert text"),
-          ("assert_exists", "Assert exists"),
-          ("screenshot", "Screenshot"),
-          ("collect_metrics", "Collect metrics"),
-          ("metric_check", "Metric check")
+          ("launch_app", "앱 실행"),
+          ("tap", "탭"),
+          ("input", "입력"),
+          ("wait", "대기"),
+          ("assert_text", "텍스트 검증"),
+          ("assert_exists", "요소 존재 검증"),
+          ("screenshot", "스크린샷"),
+          ("collect_metrics", "지표 수집"),
+          ("metric_check", "지표 확인")
         ] %}
         <option value="{{ value }}" {{ 'selected' if step.action == value else '' }}>{{ label }}</option>
         {% endfor %}
       </select>
     </label>
-    <button class="button danger step-remove" type="button" data-remove-step>Remove</button>
+    <button class="button danger step-remove" type="button" data-remove-step>삭제</button>
   </div>
   <div class="step-fields">
     <label data-step-field="selector">
-      <span>Element</span>
+      <span>요소</span>
       <div class="input-action">
         <input type="text" name="step_selector" value="{{ step.selector|default('', true) }}" data-selector-input>
         {% if inspect_url %}
-        <button class="button" type="button" data-pick-element>Pick</button>
+        <button class="button" type="button" data-pick-element>선택</button>
         {% endif %}
       </div>
     </label>
     <label data-step-field="text">
-      <span>Visible text</span>
+      <span>화면 텍스트</span>
       <input type="text" name="step_text" value="{{ step.text|default('', true) }}" data-text-input>
     </label>
     <label data-step-field="value">
-      <span>Value</span>
+      <span>입력값</span>
       <input type="text" name="step_value" value="{{ step.value|default('', true) }}">
     </label>
     <label data-step-field="timeout">
-      <span>Timeout ms</span>
+      <span>대기 시간(ms)</span>
       <input type="number" min="0" name="step_timeout_ms" value="{{ step.timeout_ms|default('', true) }}">
     </label>
     <label data-step-field="name">
-      <span>Name</span>
+      <span>이름</span>
       <input type="text" name="step_name" value="{{ step.name|default('', true) }}">
     </label>
     <label data-step-field="metric">
-      <span>Metric</span>
+      <span>지표</span>
       <input type="text" name="step_metric" value="{{ step.metric|default('memory_mb', true) }}">
     </label>
     <label data-step-field="min">
-      <span>Min</span>
+      <span>최소</span>
       <input type="number" step="0.1" name="step_min" value="{{ step.min|default('', true) }}">
     </label>
     <label data-step-field="max">
-      <span>Max</span>
+      <span>최대</span>
       <input type="number" step="0.1" name="step_max" value="{{ step.max|default('', true) }}">
     </label>
   </div>

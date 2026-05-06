@@ -70,8 +70,8 @@ class WebSmokeTests(unittest.TestCase):
                 self.assertEqual(response.status_code, 200, path)
 
             builder_page = client.get("/suites/builder").text
-            self.assertIn("Screen Elements", builder_page)
-            self.assertIn("Search elements", builder_page)
+            self.assertIn("화면 요소", builder_page)
+            self.assertIn("요소 검색", builder_page)
             self.assertIn("data-pick-element", builder_page)
             self.assertIn("data-add-screen-step", builder_page)
             self.assertIn("addStepFromElement", builder_page)
