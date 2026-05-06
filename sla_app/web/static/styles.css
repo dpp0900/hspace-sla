@@ -690,6 +690,10 @@ select:focus {
   scroll-margin-top: 84px;
 }
 
+.element-mode {
+  margin-bottom: 12px;
+}
+
 .element-list {
   display: grid;
   gap: 10px;

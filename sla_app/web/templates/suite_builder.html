@@ -127,6 +127,16 @@
       </div>
       <button class="button" type="button" data-scan-elements>화면 스캔</button>
     </div>
+    <div class="segmented element-mode" role="radiogroup" aria-label="화면 요소 스캔 범위">
+      <label>
+        <input type="radio" name="element_mode" value="standard" checked>
+        <span>일반 후보</span>
+      </label>
+      <label>
+        <input type="radio" name="element_mode" value="advanced">
+        <span>고급 전체</span>
+      </label>
+    </div>
     <label class="search-field">
       <span>요소 검색</span>
       <input type="search" data-element-search placeholder="텍스트, selector, 역할, class 검색">
@@ -178,6 +188,7 @@
     const pickerStatus = document.querySelector("[data-picker-status]");
     const scanButton = document.querySelector("[data-scan-elements]");
     const elementSearch = document.querySelector("[data-element-search]");
+    const elementModeRadios = document.querySelectorAll("input[name='element_mode']");
     const installedAppList = document.querySelector("[data-installed-app-list]");
     const installedAppStatus = document.querySelector("[data-installed-app-status]");
     const loadInstalledAppsButton = document.querySelector("[data-load-installed-apps]");
@@ -331,6 +342,7 @@
       url.searchParams.set("app_wait_activity", document.querySelector("input[name='app_wait_activity']")?.value || "");
       url.searchParams.set("app_wait_package", document.querySelector("input[name='app_wait_package']")?.value || "");
       url.searchParams.set("no_reset", document.querySelector("input[name='no_reset']")?.checked ? "true" : "false");
+      url.searchParams.set("mode", document.querySelector("input[name='element_mode']:checked")?.value || "standard");
       return url;
     }
 
@@ -356,6 +368,7 @@
         element.class_name,
         element.resource_id,
         element.accessibility_id,
+        element.bounds,
       ].filter(Boolean).join(" ").toLowerCase();
     }
 
@@ -548,6 +561,12 @@
     elementSearch?.addEventListener("input", () => {
       renderFilteredElements();
     });
+    elementModeRadios.forEach((radio) => radio.addEventListener("change", () => {
+      pickerLoaded = false;
+      if (scannedElements.length) {
+        loadElements(true);
+      }
+    }));
     scanButton?.addEventListener("click", () => {
       loadElements(true);
     });

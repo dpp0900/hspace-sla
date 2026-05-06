@@ -47,11 +47,25 @@ class InspectorTests(unittest.TestCase):
 
         selectors = [element.get("selector") for element in elements]
         labels = [element["label"] for element in elements]
+        class_names = [element.get("class_name") for element in elements]
 
         self.assertIn("id=com.example:id/email", selectors)
         self.assertIn("id=com.example:id/login", selectors)
         self.assertIn("accessibility_id=Open menu", selectors)
         self.assertIn("Login", labels)
+        self.assertNotIn("Hidden", labels)
+        self.assertNotIn("android.widget.FrameLayout", class_names)
+
+    def test_advanced_mode_includes_low_level_nodes(self) -> None:
+        elements = extract_ui_elements(PAGE_SOURCE, mode="advanced")
+
+        frame_layout = next(
+            element for element in elements if element.get("class_name") == "android.widget.FrameLayout"
+        )
+        labels = [element["label"] for element in elements]
+
+        self.assertEqual(frame_layout["selector"], 'xpath=//*[@class="android.widget.FrameLayout"]')
+        self.assertEqual(frame_layout["confidence"], "fallback")
         self.assertNotIn("Hidden", labels)
 
     def test_deduplicates_elements(self) -> None:

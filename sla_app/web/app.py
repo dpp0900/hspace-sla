@@ -321,6 +321,7 @@ def create_app(base_dir: str | Path | None = None) -> FastAPI:
         app_wait_activity: str = "",
         app_wait_package: str = "",
         no_reset: bool = False,
+        mode: str = "standard",
     ):
         try:
             app_target = _app_target_from_scan_request(
@@ -332,21 +333,21 @@ def create_app(base_dir: str | Path | None = None) -> FastAPI:
                 app_wait_package=app_wait_package,
                 no_reset=no_reset,
             )
-            return _inspect_app_target_elements(app_target)
+            return _inspect_app_target_elements(app_target, mode=mode)
         except (SuiteValidationError, ValueError) as exc:
             return JSONResponse({"error": str(exc), "elements": []}, status_code=400)
         except Exception as exc:  # noqa: BLE001 - surface Android/Appium scan errors to the UI.
             return JSONResponse({"error": _friendly_appium_error(exc), "elements": []}, status_code=500)
 
     @app.get("/suites/{suite_id}/elements")
-    async def inspect_suite_elements(suite_id: str):
+    async def inspect_suite_elements(suite_id: str, mode: str = "standard"):
         try:
             suite = store.load_suite(suite_id)
         except KeyError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
         try:
-            return _inspect_app_target_elements(suite.app, source_path=suite.source_path)
+            return _inspect_app_target_elements(suite.app, source_path=suite.source_path, mode=mode)
         except Exception as exc:  # noqa: BLE001 - surface Appium/device scan errors to the UI.
             return JSONResponse({"error": _friendly_appium_error(exc), "elements": []}, status_code=500)
 
@@ -508,7 +509,11 @@ def _app_target_from_scan_request(
     return AppTarget(platform="android", apk=apk.strip(), no_reset=no_reset)
 
 
-def _inspect_app_target_elements(app_target: AppTarget, source_path: Path | None = None) -> dict[str, object]:
+def _inspect_app_target_elements(
+    app_target: AppTarget,
+    source_path: Path | None = None,
+    mode: str = "standard",
+) -> dict[str, object]:
     suite = TestSuite(
         name="화면 요소 스캔",
         app=app_target,
@@ -517,9 +522,13 @@ def _inspect_app_target_elements(app_target: AppTarget, source_path: Path | None
     )
     adapter = AndroidAppiumAdapter.from_suite(suite)
     try:
-        return {"elements": adapter.inspect_elements()}
+        return {"elements": adapter.inspect_elements(_element_scan_mode(mode))}
     finally:
         adapter.close()
+
+
+def _element_scan_mode(mode: str) -> str:
+    return "advanced" if mode == "advanced" else "standard"
 
 
 def _android_discovery_config() -> LaunchConfig:

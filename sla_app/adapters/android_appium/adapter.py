@@ -96,9 +96,9 @@ class AndroidAppiumAdapter:
         self._last_metrics.update(metrics)
         return metrics
 
-    def inspect_elements(self) -> list[dict[str, str]]:
+    def inspect_elements(self, mode: str = "standard") -> list[dict[str, str]]:
         self._ensure_driver()
-        return extract_ui_elements(str(self.driver.page_source))
+        return extract_ui_elements(str(self.driver.page_source), mode=mode)
 
     def close(self) -> None:
         if self.driver is not None:

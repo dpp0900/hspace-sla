@@ -72,6 +72,8 @@ class WebSmokeTests(unittest.TestCase):
             builder_page = client.get("/suites/builder").text
             self.assertIn("화면 요소", builder_page)
             self.assertIn("요소 검색", builder_page)
+            self.assertIn('name="element_mode"', builder_page)
+            self.assertIn('value="advanced"', builder_page)
             self.assertIn("data-pick-element", builder_page)
             self.assertIn("addStepFromElement", builder_page)
 
@@ -97,7 +99,8 @@ class WebSmokeTests(unittest.TestCase):
             self.assertEqual(response.json()["apps"][0]["app_wait_package"], "*")
 
             class FakeAdapter:
-                def inspect_elements(self):
+                def inspect_elements(self, mode="standard"):
+                    self.mode = mode
                     return [
                         {
                             "label": "Email",
@@ -110,15 +113,20 @@ class WebSmokeTests(unittest.TestCase):
                 def close(self) -> None:
                     pass
 
-            with patch("sla_app.web.app.AndroidAppiumAdapter.from_suite", return_value=FakeAdapter()):
-                response = client.get("/android/elements", params={"target_mode": "apk", "apk": "app.apk"})
+            fake_adapter = FakeAdapter()
+            with patch("sla_app.web.app.AndroidAppiumAdapter.from_suite", return_value=fake_adapter):
+                response = client.get(
+                    "/android/elements",
+                    params={"target_mode": "apk", "apk": "app.apk", "mode": "advanced"},
+                )
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.json()["elements"][0]["selector"], "id=com.example:id/email")
+            self.assertEqual(fake_adapter.mode, "advanced")
 
             captured_targets = []
 
-            def fake_inspect_target(app_target, source_path=None):
-                captured_targets.append(app_target)
+            def fake_inspect_target(app_target, source_path=None, mode="standard"):
+                captured_targets.append((app_target, mode))
                 return {"elements": []}
 
             with patch("sla_app.web.app._inspect_app_target_elements", side_effect=fake_inspect_target):
@@ -133,8 +141,9 @@ class WebSmokeTests(unittest.TestCase):
                     },
                 )
             self.assertEqual(response.status_code, 200)
-            self.assertEqual(captured_targets[0].app_wait_activity, "*")
-            self.assertEqual(captured_targets[0].app_wait_package, "*")
+            self.assertEqual(captured_targets[0][0].app_wait_activity, "*")
+            self.assertEqual(captured_targets[0][0].app_wait_package, "*")
+            self.assertEqual(captured_targets[0][1], "standard")
 
             response = client.post(
                 f"/suites/{summary.suite_id}/edit/helper",
