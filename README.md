@@ -249,6 +249,8 @@ appium driver list --installed
 
 웹앱은 suite 실행 시 Appium 서버가 없으면 기본적으로 Python `AppiumService`로 자동 시작을 시도합니다. CLI 런처는 `--start-appium` 옵션을 줄 때만 Appium 서버를 자동 시작합니다. 두 경우 모두 Appium 2와 `uiautomator2` 드라이버가 설치되어 있어야 합니다.
 
+전역 `appium` 명령이 `PATH`에 없어도 `~/node_modules/appium/build/lib/main.js`에 설치된 로컬 Appium은 자동 탐색합니다. 별도 위치에 설치했다면 `APPIUM_MAIN_SCRIPT=/absolute/path/to/appium/build/lib/main.js`로 지정하세요.
+
 ### 권장 환경 변수
 
 macOS `zsh` 예시:

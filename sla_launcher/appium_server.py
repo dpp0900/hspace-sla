@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
+import subprocess as sp
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -54,6 +56,9 @@ def build_appium_env(sdk_root: str) -> dict[str, str]:
         str(Path(sdk_root) / "platform-tools"),
         str(Path(sdk_root) / "emulator"),
         str(Path(sdk_root) / "cmdline-tools" / "latest" / "bin"),
+        str(Path.home() / "node_modules" / ".bin"),
+        "/opt/homebrew/bin",
+        "/usr/local/bin",
     ]
     env["ANDROID_HOME"] = sdk_root
     env["ANDROID_SDK_ROOT"] = sdk_root
@@ -91,17 +96,21 @@ def maybe_start_appium(config: LaunchConfig):
     if base_path:
         service_args.extend(["--base-path", base_path])
 
+    node_path = _discover_executable(config.node_path, "node")
+    npm_path = _discover_executable(config.npm_path, "npm")
+    main_script = _discover_appium_main_script(config.appium_main_script, npm_path)
+
     start_kwargs: dict[str, object] = {
         "args": service_args,
         "env": build_appium_env(resolve_sdk_root(config.android_sdk_root)),
         "timeout_ms": config.server_timeout * 1000,
     }
-    if config.node_path:
-        start_kwargs["node"] = config.node_path
-    if config.npm_path:
-        start_kwargs["npm"] = config.npm_path
-    if config.appium_main_script:
-        start_kwargs["main_script"] = config.appium_main_script
+    if node_path:
+        start_kwargs["node"] = node_path
+    if npm_path:
+        start_kwargs["npm"] = npm_path
+    if main_script:
+        start_kwargs["main_script"] = main_script
 
     log(f"Python AppiumService로 서버 시작: {config.appium_url}")
     try:
@@ -110,7 +119,93 @@ def maybe_start_appium(config: LaunchConfig):
         fail(
             "Python AppiumService로 서버 시작에 실패했습니다. "
             "Appium 서버 패키지와 드라이버가 설치되어 있는지 확인하세요.\n"
-            f"원인: {exc}"
+            f"원인: {_format_appium_start_error(exc)}"
         )
     wait_for_appium(config.appium_url, config.server_timeout)
     return service
+
+
+def _discover_executable(configured_path: str | None, executable_name: str) -> str | None:
+    candidates = [
+        configured_path,
+        shutil.which(executable_name),
+        f"/opt/homebrew/bin/{executable_name}",
+        f"/usr/local/bin/{executable_name}",
+    ]
+    for candidate in candidates:
+        if candidate and Path(candidate).exists():
+            return str(Path(candidate))
+    return configured_path
+
+
+def _discover_appium_main_script(configured_path: str | None, npm_path: str | None) -> str | None:
+    if configured_path:
+        return _normalize_appium_main_script(Path(configured_path).expanduser())
+
+    for candidate in _appium_main_script_candidates(npm_path):
+        if candidate.exists():
+            return _normalize_appium_main_script(candidate)
+    return None
+
+
+def _appium_main_script_candidates(npm_path: str | None) -> list[Path]:
+    candidates: list[Path] = []
+    for modules_root in _npm_module_roots(npm_path):
+        candidates.append(modules_root / "appium" / "build" / "lib" / "main.js")
+        candidates.append(modules_root / "appium" / "index.js")
+
+    home_modules = Path.home() / "node_modules" / "appium"
+    candidates.extend(
+        [
+            home_modules / "build" / "lib" / "main.js",
+            home_modules / "index.js",
+        ]
+    )
+    return _dedupe_paths(candidates)
+
+
+def _npm_module_roots(npm_path: str | None) -> list[Path]:
+    npm = npm_path or shutil.which("npm")
+    if not npm:
+        return []
+
+    roots: list[Path] = []
+    for args in (("root",), ("root", "-g")):
+        try:
+            output = sp.check_output([npm, *args], stderr=sp.DEVNULL, text=True).strip()
+        except (OSError, sp.CalledProcessError):
+            continue
+        if output:
+            roots.append(Path(output))
+    return _dedupe_paths(roots)
+
+
+def _normalize_appium_main_script(path: Path) -> str:
+    resolved = path.resolve()
+    if resolved.name == "appium.js":
+        main_script = resolved.with_name("main.js")
+        if main_script.exists():
+            return str(main_script)
+    return str(resolved)
+
+
+def _dedupe_paths(paths: list[Path]) -> list[Path]:
+    seen: set[str] = set()
+    result: list[Path] = []
+    for path in paths:
+        key = str(path)
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append(path)
+    return result
+
+
+def _format_appium_start_error(exc: Exception) -> str:
+    message = str(exc).strip()
+    if message and message != "b''":
+        return message
+    return (
+        "Appium 실행 로그가 비어 있습니다. node/npm 또는 Appium main.js를 찾지 못했을 수 있습니다. "
+        "로컬 설치는 ~/node_modules/appium/build/lib/main.js까지 자동 탐색합니다."
+    )
