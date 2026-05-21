@@ -207,6 +207,7 @@ class StepResult:
     success: bool
     duration_ms: int
     message: str = ""
+    failure_category: str = ""
     screenshot_path: str | None = None
     metrics: dict[str, float] = field(default_factory=dict)
     assertion_failure: bool = False
@@ -219,6 +220,7 @@ class StepResult:
             "success": self.success,
             "duration_ms": self.duration_ms,
             "message": self.message,
+            "failure_category": self.failure_category,
             "screenshot_path": self.screenshot_path,
             "metrics": self.metrics,
             "assertion_failure": self.assertion_failure,

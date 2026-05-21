@@ -60,6 +60,7 @@ class EngineTests(unittest.TestCase):
 
         self.assertEqual(run.status, "FAIL")
         self.assertEqual(run.scenarios[0].step_results[0].message, "launcher exited with code 1")
+        self.assertEqual(run.scenarios[0].step_results[0].failure_category, "환경/실행")
         self.assertEqual(len(run.scenarios[0].step_results), 1)
 
 

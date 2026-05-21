@@ -21,6 +21,7 @@ from sla_app.storage import SqliteStore
 from sla_launcher.android import avd_home, detect_host_architecture, ensure_emulator, load_avd_definitions
 from sla_launcher.appium_server import is_appium_server_ready
 from sla_launcher.config import LaunchConfig
+from sla_launcher.diagnostics import collect_environment_diagnostics
 from sla_launcher.paths import default_sdk_root, platform_executable_name, sdk_tool_path
 from sla_launcher.process import resolve_executable, resolve_sdk_root
 
@@ -393,6 +394,8 @@ def create_app(base_dir: str | Path | None = None) -> FastAPI:
             {
                 "active": "runs",
                 "run": detail,
+                "insights": _run_insights(detail),
+                "comparison": _run_comparison(store, detail),
             },
         )
 
@@ -439,6 +442,10 @@ def create_app(base_dir: str | Path | None = None) -> FastAPI:
             },
         )
 
+    @app.get("/settings/diagnostics")
+    async def settings_diagnostics():
+        return JSONResponse(collect_environment_diagnostics(_android_discovery_config()))
+
     return app
 
 
@@ -454,6 +461,163 @@ def _suite_summary_or_404(store: SqliteStore, suite_id: str):
     if summary is None:
         raise HTTPException(status_code=404, detail="스위트를 찾지 못했습니다")
     return summary
+
+
+def _run_insights(run: dict) -> list[dict[str, str]]:
+    if run.get("status") == "PASS":
+        return [
+            {
+                "level": "ok",
+                "title": "SLA 통과",
+                "detail": "이번 실행은 모든 시나리오와 SLA 기준을 통과했습니다.",
+            }
+        ]
+
+    insights: list[dict[str, str]] = []
+    for reason in run.get("reasons", []):
+        insights.append(_sla_reason_insight(str(reason)))
+
+    for scenario in run.get("scenarios", []):
+        scenario_name = str(scenario.get("name") or "시나리오")
+        for step in scenario.get("step_results", []):
+            if step.get("success"):
+                continue
+            category = str(step.get("failure_category") or _fallback_failure_category(step))
+            action = str(step.get("action") or "동작")
+            insights.append(
+                {
+                    "level": "fail",
+                    "title": f"{scenario_name}: {category}",
+                    "detail": f"{_step_action_label(action)} 단계에서 실패했습니다. {_human_step_message(step)}",
+                }
+            )
+            if len(insights) >= 6:
+                return insights
+    if not insights:
+        insights.append(
+            {
+                "level": "fail",
+                "title": "실패 원인 확인 필요",
+                "detail": "저장된 실행 로그에 구체적인 실패 메시지가 없습니다.",
+            }
+        )
+    return insights
+
+
+def _run_comparison(store: SqliteStore, run: dict) -> dict[str, str | int] | None:
+    suite_id = run.get("suite_id")
+    run_id = run.get("run_id")
+    started_at = str(run.get("started_at") or "")
+    previous = None
+    for candidate in store.list_runs(limit=100):
+        if candidate.suite_id != suite_id or candidate.run_id == run_id:
+            continue
+        if not started_at or candidate.started_at < started_at:
+            previous = candidate
+            break
+    if previous is None:
+        return None
+
+    duration_ms = int(run.get("duration_ms") or 0)
+    delta_ms = duration_ms - previous.duration_ms
+    if delta_ms > 0:
+        duration_label = f"{delta_ms} ms 느려졌습니다"
+    elif delta_ms < 0:
+        duration_label = f"{abs(delta_ms)} ms 빨라졌습니다"
+    else:
+        duration_label = "실행 시간이 같습니다"
+    return {
+        "run_id": previous.run_id,
+        "status": previous.status,
+        "duration_ms": previous.duration_ms,
+        "delta_ms": delta_ms,
+        "duration_label": duration_label,
+    }
+
+
+def _sla_reason_insight(reason: str) -> dict[str, str]:
+    if reason == "scenario execution failed":
+        return {
+            "level": "fail",
+            "title": "시나리오 실행 실패",
+            "detail": "하나 이상의 단계가 실패해서 시나리오가 완료되지 않았습니다.",
+        }
+    if reason.startswith("duration_ms"):
+        return {
+            "level": "fail",
+            "title": "실행 시간 초과",
+            "detail": f"SLA 최대 실행 시간을 넘었습니다. 원문: {reason}",
+        }
+    if reason.startswith("assertion_failures"):
+        return {
+            "level": "fail",
+            "title": "검증 실패 초과",
+            "detail": f"허용된 검증 실패 수보다 많이 실패했습니다. 원문: {reason}",
+        }
+    if reason.startswith("assertion_count"):
+        return {
+            "level": "fail",
+            "title": "필수 검증 부족",
+            "detail": f"요구한 검증 개수를 채우지 못했습니다. 원문: {reason}",
+        }
+    if reason.startswith("metric "):
+        return {
+            "level": "fail",
+            "title": "지표 기준 위반",
+            "detail": f"수집된 기술 지표가 기준을 만족하지 못했습니다. 원문: {reason}",
+        }
+    if reason.startswith("metric_violations"):
+        return {
+            "level": "fail",
+            "title": "지표 위반 초과",
+            "detail": f"허용된 지표 위반 수보다 많이 실패했습니다. 원문: {reason}",
+        }
+    return {"level": "fail", "title": "SLA 위반", "detail": reason}
+
+
+def _fallback_failure_category(step: dict) -> str:
+    action = str(step.get("action") or "")
+    message = str(step.get("message") or "").lower()
+    if action == "launch_app" or "launcher exited" in message or "appium" in message:
+        return "환경/실행"
+    if action == "metric_check":
+        return "지표 위반"
+    if "element not found" in message or action == "assert_exists":
+        return "요소 찾기 실패"
+    if "text not found" in message or action == "assert_text":
+        return "텍스트 검증 실패"
+    return "실행 오류"
+
+
+def _human_step_message(step: dict) -> str:
+    action = str(step.get("action") or "")
+    message = str(step.get("message") or "").strip()
+    normalized = message.lower()
+    if "launcher exited" in normalized:
+        return "런처가 종료되었습니다. 설정의 환경 진단에서 Android SDK, Node.js, Appium 패키지를 먼저 확인하세요."
+    if "element not found" in normalized:
+        return "요소를 찾지 못했습니다. 화면 요소 검색에서 다시 선택하거나 대기 시간을 늘려보세요."
+    if "text not found" in normalized:
+        return "텍스트를 찾지 못했습니다. 앱 화면 문구가 바뀌었거나 실행 타이밍이 빠를 수 있습니다."
+    if action == "metric_check":
+        return "수집된 지표가 설정한 최소/최대 기준을 벗어났습니다."
+    if message:
+        return message
+    return "상세 메시지가 없습니다."
+
+
+def _step_action_label(action: str) -> str:
+    return {
+        "launch_app": "앱 실행",
+        "tap": "탭",
+        "input": "입력",
+        "wait": "대기",
+        "assert_text": "텍스트 검증",
+        "assert_exists": "요소 존재 검증",
+        "screenshot": "스크린샷",
+        "collect_metrics": "지표 수집",
+        "metric_check": "지표 확인",
+    }.get(action, action)
 
 
 def _helper_url_if_available(store: SqliteStore, suite_id: str) -> str | None:

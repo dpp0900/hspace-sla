@@ -7,6 +7,7 @@
 지원 방식:
 
 - FastAPI 웹앱에서 SLA 테스트 스위트 관리/실행
+- Settings 화면에서 Android SDK, Appium, UiAutomator2 환경 진단
 - YAML 테스트 정의를 파일로 버전관리
 - APK 파일을 설치하고 실행
 - 이미 설치된 앱을 `package/activity`로 실행
@@ -333,7 +334,11 @@ SLA_WEB_PORT=8010 ./.venv/bin/python run_sla_web.py
 
 웹앱은 기본적으로 현재 작업 디렉터리에 `sla_app.db`, `suites/`, `artifacts/`를 사용합니다. 다른 위치를 쓰려면 `SLA_APP_HOME`을 지정합니다.
 
-비전공자는 `Test Suites` 화면의 `Guided Builder`로 suite를 만들 수 있고, 개발자는 `YAML Editor` 또는 `suites/*.yaml` 파일을 직접 수정할 수 있습니다.
+비전공자는 `Test Suites` 화면의 `Guided Builder`로 suite를 만들 수 있고, 개발자는 `YAML Editor` 또는 `suites/*.yaml` 파일을 직접 수정할 수 있습니다. Guided Builder의 `화면 요소` 영역은 현재 앱 화면을 스캔해서 입력칸, 버튼, 텍스트 후보를 보여주며, 각 요소에 가장 적절한 추천 동작을 먼저 제안합니다.
+
+실행 결과는 `Run Detail`에서 확인합니다. 이 화면은 PASS/FAIL 원문 로그와 함께 `실행 분석`을 제공해 환경 문제, 요소 찾기 실패, 텍스트 검증 실패, 지표 위반처럼 다음에 확인할 지점을 분류합니다. 같은 suite의 이전 실행이 있으면 실행 시간 변화도 함께 표시합니다.
+
+환경 문제를 먼저 확인하려면 `Settings` 화면의 `환경 진단`을 실행합니다. Android SDK, `adb`, emulator, Node.js, npm, Appium main script, 실행 중인 Appium 서버, AVD, UiAutomator2 드라이버 설치 여부를 한 번에 볼 수 있습니다.
 
 ### CLI로 APK 실행
 
@@ -474,7 +479,7 @@ Android 실제 실행 검증은 Appium 2, `uiautomator2`, 호스트 아키텍처
 
 Appium 자동 탐색이 실패하면 아래처럼 경로를 직접 넘길 수 있습니다.
 
-웹앱 Run Detail에서 `launcher exited with code 1`이 보이면 Android/Appium 실행 준비 단계에서 실패한 것입니다. Settings 화면에서 Android SDK, AVD, Appium 상태를 먼저 확인하세요. Appium 자동 시작이 실패하는 경우에는 `node`, `npm`, Appium main script 경로를 환경 변수로 직접 지정할 수 있습니다.
+웹앱 Run Detail에서 `환경/실행` 또는 `launcher exited with code 1`이 보이면 Android/Appium 실행 준비 단계에서 실패한 것입니다. Settings 화면의 `환경 진단`에서 Android SDK, AVD, Node.js, Appium 패키지, UiAutomator2 드라이버 상태를 먼저 확인하세요. Appium 자동 시작이 실패하는 경우에는 `node`, `npm`, Appium main script 경로를 환경 변수로 직접 지정할 수 있습니다.
 
 macOS / Linux:
 

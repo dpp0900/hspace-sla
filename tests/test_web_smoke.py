@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from sla_app.core.models import RunRecord
+from sla_app.core.models import RunRecord, ScenarioResult, SlaVerdict, StepResult
 from sla_app.core.yaml_loader import suite_from_yaml_text
 
 
@@ -38,6 +38,43 @@ class WebSmokeTests(unittest.TestCase):
             store = app.state.store
             suite = suite_from_yaml_text(VALID_YAML)
             summary = store.save_suite(suite, VALID_YAML)
+            store.save_run(
+                RunRecord(
+                    run_id="run-old",
+                    suite_id=summary.suite_id,
+                    suite_name=suite.name,
+                    status="FAIL",
+                    started_at="2026-04-22T00:00:00+00:00",
+                    ended_at="2026-04-22T00:00:01+00:00",
+                    duration_ms=1300,
+                    assertion_failures=0,
+                    metric_violations=0,
+                    reasons=["scenario execution failed"],
+                    artifact_dir=str(store.artifact_dir_for_run("run-old")),
+                    scenarios=[
+                        ScenarioResult(
+                            name="smoke",
+                            success=False,
+                            duration_ms=1300,
+                            step_results=[
+                                StepResult(
+                                    index=1,
+                                    action="launch_app",
+                                    success=False,
+                                    duration_ms=1300,
+                                    message="launcher exited with code 1",
+                                    failure_category="환경/실행",
+                                )
+                            ],
+                            assertion_count=0,
+                            assertion_failures=0,
+                            metric_violations=0,
+                            metrics={},
+                            verdict=SlaVerdict(status="FAIL", reasons=["scenario execution failed"]),
+                        )
+                    ],
+                )
+            )
             store.save_run(
                 RunRecord(
                     run_id="run-web",
@@ -77,6 +114,25 @@ class WebSmokeTests(unittest.TestCase):
             self.assertIn("data-pick-element", builder_page)
             self.assertIn("addStepFromElement", builder_page)
             self.assertIn("isInputElement", builder_page)
+            self.assertIn("recommendedElementAction", builder_page)
+            self.assertIn("추천:", builder_page)
+
+            run_page = client.get("/runs/run-web").text
+            self.assertIn("실행 분석", run_page)
+            self.assertIn("SLA 통과", run_page)
+            self.assertIn("이전 실행 대비", run_page)
+
+            with patch(
+                "sla_app.web.app.collect_environment_diagnostics",
+                return_value={
+                    "host_arch": "arm64",
+                    "summary": {"status": "ok", "ok": 9, "warn": 0, "fail": 0},
+                    "checks": [{"key": "node", "title": "Node.js", "status": "ok", "message": "ok"}],
+                },
+            ):
+                response = client.get("/settings/diagnostics")
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json()["summary"]["status"], "ok")
 
             with patch(
                 "sla_app.web.app._installed_apps_payload",

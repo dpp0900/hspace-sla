@@ -12,6 +12,7 @@
   --red-bg: #fde9e7;
   --red: #a52d20;
   --amber-bg: #fff2cc;
+  --amber: #8a5d00;
 }
 
 * {
@@ -253,6 +254,11 @@ th {
   color: var(--red);
 }
 
+.status.warn {
+  background: var(--amber-bg);
+  color: var(--amber);
+}
+
 .status.big {
   font-size: 14px;
   padding: 9px 13px;
@@ -487,6 +493,52 @@ select:focus {
   padding-left: 20px;
 }
 
+.insight-list {
+  display: grid;
+  gap: 10px;
+}
+
+.insight-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+}
+
+.insight-card.ok {
+  background: var(--green-bg);
+  border-color: #b5dfc9;
+}
+
+.insight-card.fail {
+  background: var(--red-bg);
+  border-color: #e4b1aa;
+}
+
+.insight-card p,
+.comparison-card p {
+  color: var(--muted);
+  margin: 0;
+}
+
+.comparison-card {
+  background: #f5f8f6;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
+  padding: 14px;
+}
+
+.comparison-card span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
 .thumb {
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -504,6 +556,69 @@ select:focus {
 
 .settings-grid strong {
   overflow-wrap: anywhere;
+}
+
+.diagnostic-summary {
+  background: #f5f8f6;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  margin-bottom: 14px;
+  padding: 14px;
+}
+
+.diagnostic-summary.ok {
+  background: var(--green-bg);
+  border-color: #b5dfc9;
+}
+
+.diagnostic-summary.warn {
+  background: var(--amber-bg);
+  border-color: #e8c34a;
+}
+
+.diagnostic-summary.fail {
+  background: var(--red-bg);
+  border-color: #e4b1aa;
+}
+
+.diagnostic-summary span {
+  color: var(--muted);
+}
+
+.diagnostic-list {
+  display: grid;
+  gap: 10px;
+}
+
+.diagnostic-item {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+}
+
+.diagnostic-item > div {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.diagnostic-item p {
+  color: var(--muted);
+  margin: 0;
+}
+
+.diagnostic-item code {
+  background: #f1f4f1;
+  border-radius: 6px;
+  color: var(--teal-dark);
+  font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  overflow-wrap: anywhere;
+  padding: 8px;
 }
 
 .ok {

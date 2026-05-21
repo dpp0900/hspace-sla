@@ -24,6 +24,30 @@
   </div>
 </section>
 
+<section class="panel">
+  <div class="section-head">
+    <div>
+      <h2>실행 분석</h2>
+      <p class="section-subtitle">실패 원인과 다음 확인 지점을 사람이 읽기 쉽게 정리합니다.</p>
+    </div>
+  </div>
+  <div class="insight-list">
+    {% for insight in insights %}
+    <article class="insight-card {{ insight.level }}">
+      <strong>{{ insight.title }}</strong>
+      <p>{{ insight.detail }}</p>
+    </article>
+    {% endfor %}
+  </div>
+  {% if comparison %}
+  <div class="comparison-card">
+    <span>이전 실행 대비</span>
+    <strong>{{ comparison.duration_label }}</strong>
+    <p>이전 결과: {{ comparison.status }} · {{ comparison.duration_ms }} ms · {{ comparison.run_id }}</p>
+  </div>
+  {% endif %}
+</section>
+
 {% if run.reasons %}
 <section class="panel">
   <h2>SLA 위반</h2>
@@ -49,6 +73,7 @@
           <th>동작</th>
           <th>상태</th>
           <th>실행 시간</th>
+          <th>분류</th>
           <th>메시지</th>
           <th>산출물</th>
         </tr>
@@ -60,6 +85,7 @@
           <td>{{ step.action }}</td>
           <td><span class="status {{ 'pass' if step.success else 'fail' }}">{{ 'PASS' if step.success else 'FAIL' }}</span></td>
           <td>{{ step.duration_ms }} ms</td>
+          <td>{{ step.failure_category or '-' }}</td>
           <td>{{ step.message }}</td>
           <td>
             {% set screenshot_url = step.screenshot_path|artifact_url %}

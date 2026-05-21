@@ -114,6 +114,7 @@ def _execute_scenario(
         started = time.monotonic()
         success = True
         message = ""
+        failure_category = ""
         screenshot_path = None
         step_metrics: dict[str, float] = {}
         assertion_failure = False
@@ -158,6 +159,12 @@ def _execute_scenario(
         if not success:
             scenario_success = False
             assertion_failure = assertion_failure or step.action in ASSERTION_ACTIONS
+            failure_category = _failure_category(
+                step,
+                message=message,
+                assertion_failure=assertion_failure,
+                metric_violation=metric_violation,
+            )
 
         step_results.append(
             StepResult(
@@ -166,6 +173,7 @@ def _execute_scenario(
                 success=success,
                 duration_ms=_elapsed_ms(started),
                 message=message,
+                failure_category=failure_category,
                 screenshot_path=screenshot_path,
                 metrics=step_metrics,
                 assertion_failure=assertion_failure,
@@ -229,3 +237,28 @@ def _system_exit_message(exc: SystemExit) -> str:
     if exc.code:
         return str(exc.code)
     return "launcher exited"
+
+
+def _failure_category(
+    step: ActionStep,
+    *,
+    message: str,
+    assertion_failure: bool,
+    metric_violation: bool,
+) -> str:
+    normalized = message.lower()
+    if step.action == "launch_app" or "launcher exited" in normalized or "appium" in normalized:
+        return "환경/실행"
+    if metric_violation or step.action == "metric_check":
+        return "지표 위반"
+    if assertion_failure:
+        if "element not found" in normalized or step.action == "assert_exists":
+            return "요소 찾기 실패"
+        if "text not found" in normalized or step.action == "assert_text":
+            return "텍스트 검증 실패"
+        return "검증 실패"
+    if "element not found" in normalized:
+        return "요소 찾기 실패"
+    if "unsupported action" in normalized:
+        return "지원하지 않는 동작"
+    return "실행 오류"

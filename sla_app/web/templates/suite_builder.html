@@ -377,7 +377,7 @@
       if (!elements.length) {
         const empty = document.createElement("p");
         empty.className = "empty";
-        empty.textContent = "선택할 수 있는 요소가 없습니다.";
+        empty.textContent = "선택할 수 있는 요소가 없습니다. 검색어를 줄이거나 고급 전체 모드로 다시 스캔하세요.";
         pickerList.append(empty);
         return;
       }
@@ -390,7 +390,7 @@
         card.append(title);
 
         const meta = document.createElement("p");
-        meta.textContent = [element.role, element.confidence, element.bounds].filter(Boolean).join(" · ");
+        meta.textContent = [elementRoleLabel(element), elementConfidenceLabel(element), element.bounds].filter(Boolean).join(" · ");
         card.append(meta);
 
         if (element.selector) {
@@ -401,27 +401,43 @@
 
         const actions = document.createElement("div");
         actions.className = "actions";
-        if (element.selector) {
-          actions.append(elementActionButton("탭", () => addStepFromElement(element, "tap", "selector")));
-          if (isInputElement(element)) {
-            actions.append(elementActionButton("입력", () => addStepFromElement(element, "input", "selector")));
+        const recommended = recommendedElementAction(element);
+        if (recommended) {
+          actions.append(
+            elementActionButton(
+              `추천: ${recommended.label}`,
+              () => addStepFromElement(element, recommended.action, recommended.mode),
+              "primary",
+            ),
+          );
+        }
+        const addSecondaryAction = (label, action, mode) => {
+          if (recommended && recommended.action === action && recommended.mode === mode) {
+            return;
           }
-          actions.append(elementActionButton("존재 검증", () => addStepFromElement(element, "assert_exists", "selector")));
+          actions.append(elementActionButton(label, () => addStepFromElement(element, action, mode)));
+        };
+        if (element.selector) {
+          addSecondaryAction("탭", "tap", "selector");
+          if (isInputElement(element)) {
+            addSecondaryAction("입력", "input", "selector");
+          }
+          addSecondaryAction("존재 검증", "assert_exists", "selector");
 
           const selectorButton = document.createElement("button");
           selectorButton.className = "button";
           selectorButton.type = "button";
-          selectorButton.textContent = "선택 스텝에 채우기";
+          selectorButton.textContent = "현재 스텝에 선택자 채우기";
           selectorButton.addEventListener("click", () => applyElement(element, "selector"));
           actions.append(selectorButton);
         }
         if (element.text) {
-          actions.append(elementActionButton("텍스트 검증", () => addStepFromElement(element, "assert_text", "text")));
+          addSecondaryAction("텍스트 검증", "assert_text", "text");
 
           const textButton = document.createElement("button");
           textButton.className = "button";
           textButton.type = "button";
-          textButton.textContent = "텍스트 채우기";
+          textButton.textContent = "현재 스텝에 텍스트 채우기";
           textButton.addEventListener("click", () => applyElement(element, "text"));
           actions.append(textButton);
         }
@@ -430,15 +446,65 @@
       });
     }
 
+    function recommendedElementAction(element) {
+      if (element.selector && isInputElement(element)) {
+        return {action: "input", mode: "selector", label: "입력"};
+      }
+      if (element.selector && isTapElement(element)) {
+        return {action: "tap", mode: "selector", label: "탭"};
+      }
+      if (element.text && !element.selector) {
+        return {action: "assert_text", mode: "text", label: "텍스트 검증"};
+      }
+      if (element.selector) {
+        return {action: "assert_exists", mode: "selector", label: "존재 검증"};
+      }
+      if (element.text) {
+        return {action: "assert_text", mode: "text", label: "텍스트 검증"};
+      }
+      return null;
+    }
+
     function isInputElement(element) {
       const role = (element.role || "").toLowerCase();
       const className = (element.class_name || "").toLowerCase();
       return role === "input" || className.includes("edittext") || className.includes("textfield");
     }
 
-    function elementActionButton(label, callback) {
+    function isTapElement(element) {
+      const role = (element.role || "").toLowerCase();
+      const className = (element.class_name || "").toLowerCase();
+      return role === "button" || role === "tab" || className.includes("button") || className.includes("imagebutton");
+    }
+
+    function elementRoleLabel(element) {
+      const role = (element.role || "").toLowerCase();
+      const labels = {
+        input: "입력칸",
+        button: "버튼",
+        text: "텍스트",
+        image: "이미지",
+        checkbox: "체크박스",
+        switch: "스위치",
+        tab: "탭",
+      };
+      return labels[role] || element.role || "요소";
+    }
+
+    function elementConfidenceLabel(element) {
+      const confidence = (element.confidence || "").toLowerCase();
+      const labels = {
+        high: "안정적 선택자",
+        medium: "보통 선택자",
+        low: "불안정한 선택자",
+        text: "텍스트 기반",
+      };
+      return labels[confidence] || element.confidence || "";
+    }
+
+    function elementActionButton(label, callback, variant = "") {
       const button = document.createElement("button");
-      button.className = "button";
+      button.className = variant ? `button ${variant}` : "button";
       button.type = "button";
       button.textContent = label;
       button.addEventListener("click", callback);
@@ -504,6 +570,7 @@
         assert_exists: "요소 존재 검증",
         screenshot: "스크린샷",
         collect_metrics: "지표 수집",
+        metric_check: "지표 확인",
       }[action] || action;
     }
 
