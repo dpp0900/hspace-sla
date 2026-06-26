@@ -133,6 +133,7 @@ class DeploymentFileTests(unittest.TestCase):
     def test_ci_runs_python_and_container_smoke_checks(self) -> None:
         workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
 
+        self.assertIn('python -m pip install -e ".[dev]"', workflow)
         self.assertIn("python -m pytest tests", workflow)
         self.assertIn("docker compose config", workflow)
         self.assertIn("docker build --build-arg SLA_BUILD_SHA=${{ github.sha }}", workflow)
