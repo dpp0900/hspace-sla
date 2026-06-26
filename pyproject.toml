@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=70"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hspace-sla-runner"
+version = "0.1.0"
+description = "Android Appium SLA test runner with a FastAPI web UI"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "Appium-Python-Client==5.3.0",
+  "fastapi==0.115.6",
+  "httpx==0.28.1",
+  "Jinja2==3.1.5",
+  "mcp==1.28.0",
+  "python-multipart==0.0.20",
+  "PyYAML==6.0.2",
+  "uvicorn[standard]==0.34.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest",
+]
+
+[project.scripts]
+sla-web = "sla_app.web.__main__:main"
+sla-launch-android = "sla_launcher.main:main"
+sla-restore-backup = "scripts.restore_backup:main"
+sla-mcp = "sla_app.mcp.server:main"
+
+[tool.setuptools.packages.find]
+include = ["sla_app*", "sla_launcher*", "scripts*"]
+
+[tool.setuptools.package-data]
+"sla_app.web" = ["templates/*.html", "static/*.css"]

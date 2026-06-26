@@ -102,15 +102,39 @@ def _validate_step(step: ActionStep, scenario_name: str) -> None:
         raise SuiteValidationError("tap requires selector or text")
     if step.action == "input" and not (step.selector and step.value is not None):
         raise SuiteValidationError("input requires selector and value")
-    if step.action == "assert_text" and not step.text:
-        raise SuiteValidationError("assert_text requires text")
-    if step.action == "assert_exists" and not (step.selector or step.text):
-        raise SuiteValidationError("assert_exists requires selector or text")
+    if step.action in {"swipe", "scroll"}:
+        if step.direction and step.direction.lower() not in {"up", "down", "left", "right"}:
+            raise SuiteValidationError(f"{step.action} direction must be up, down, left, or right")
+        if step.percent is not None and step.percent <= 0:
+            raise SuiteValidationError(f"{step.action} percent must be greater than 0")
+        if step.action == "swipe" and step.percent is not None and step.percent > 1:
+            raise SuiteValidationError("swipe percent must be less than or equal to 1")
+    if step.action == "scroll_to_text" and not step.text:
+        raise SuiteValidationError("scroll_to_text requires text")
+    if step.action in {"assert_text", "assert_not_text"} and not step.text:
+        raise SuiteValidationError(f"{step.action} requires text")
+    if step.action in {"assert_exists", "assert_not_exists"} and not (
+        step.selector or step.text
+    ):
+        raise SuiteValidationError(f"{step.action} requires selector or text")
+    if step.action in {"assert_visible", "assert_enabled"} and not (step.selector or step.text):
+        raise SuiteValidationError(f"{step.action} requires selector or text")
+    if step.action == "assert_attribute":
+        if not (step.selector or step.text):
+            raise SuiteValidationError("assert_attribute requires selector or text")
+        if not step.attribute:
+            raise SuiteValidationError("assert_attribute requires attribute")
+        if step.value is None:
+            raise SuiteValidationError("assert_attribute requires value")
     if step.action == "metric_check":
         if not step.metric:
             raise SuiteValidationError("metric_check requires metric")
         if step.min is None and step.max is None:
             raise SuiteValidationError("metric_check requires min or max")
+    if step.action == "assert_current_package" and not (step.package or step.value):
+        raise SuiteValidationError("assert_current_package requires package")
+    if step.action == "assert_current_activity" and not (step.activity or step.value):
+        raise SuiteValidationError("assert_current_activity requires activity")
 
 
 def _yaml_load(text: str) -> Any:

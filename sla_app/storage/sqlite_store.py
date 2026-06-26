@@ -1,16 +1,22 @@
 from __future__ import annotations
 
 import json
+import os
 import re
+import shutil
 import sqlite3
 from contextlib import closing, contextmanager
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 from sla_app.core.models import RunRecord, TestSuite
 from sla_app.core.yaml_loader import load_suite, suite_to_yaml
+
+
+DB_SCHEMA_VERSION = 1
+DB_BUSY_TIMEOUT_MS = 5000
 
 
 @dataclass(frozen=True)
@@ -41,10 +47,11 @@ class SqliteStore:
         self.base_dir = Path(base_dir)
         self.suites_dir = self.base_dir / "suites"
         self.artifacts_dir = self.base_dir / "artifacts"
-        self.db_path = self.base_dir / "sla_app.db"
+        self.db_path = Path(os.getenv("SLA_DB_PATH", self.base_dir / "sla_app.db"))
         self.base_dir.mkdir(parents=True, exist_ok=True)
         self.suites_dir.mkdir(parents=True, exist_ok=True)
         self.artifacts_dir.mkdir(parents=True, exist_ok=True)
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._initialize()
 
     def save_suite(self, suite: TestSuite, yaml_text: str | None = None) -> SuiteSummary:
@@ -202,6 +209,22 @@ class SqliteStore:
             ).fetchall()
         return [_run_summary_from_row(row) for row in rows]
 
+    def list_runs_for_suite(self, suite_id: str, limit: int = 20) -> list[RunSummary]:
+        with self._managed_connection() as conn:
+            rows = conn.execute(
+                """
+                SELECT id, suite_id, suite_name, status, started_at, ended_at,
+                       duration_ms, assertion_failures, metric_violations,
+                       reasons_json, artifact_dir
+                FROM runs
+                WHERE suite_id = ?
+                ORDER BY started_at DESC
+                LIMIT ?
+                """,
+                (suite_id, limit),
+            ).fetchall()
+        return [_run_summary_from_row(row) for row in rows]
+
     def get_run_summary(self, run_id: str) -> RunSummary | None:
         with self._managed_connection() as conn:
             row = conn.execute(
@@ -231,8 +254,168 @@ class SqliteStore:
             rows = conn.execute("SELECT status, COUNT(*) AS count FROM runs GROUP BY status").fetchall()
         return {row["status"]: int(row["count"]) for row in rows}
 
+    def run_count(self) -> int:
+        with self._managed_connection() as conn:
+            row = conn.execute("SELECT COUNT(*) AS count FROM runs").fetchone()
+        return int(row["count"])
+
+    def fail_incomplete_runs(
+        self,
+        *,
+        reason: str,
+        statuses: tuple[str, ...] = ("QUEUED", "RUNNING"),
+        now: datetime | None = None,
+    ) -> int:
+        if not statuses:
+            return 0
+
+        completed_at = now or datetime.now(UTC)
+        completed_at_text = completed_at.isoformat()
+        placeholders = ",".join("?" for _ in statuses)
+        with self._managed_connection() as conn:
+            rows = conn.execute(
+                f"""
+                SELECT id, status, started_at, duration_ms, assertion_failures,
+                       metric_violations, reasons_json, detail_json
+                FROM runs
+                WHERE status IN ({placeholders})
+                """,
+                statuses,
+            ).fetchall()
+
+            for row in rows:
+                detail = json.loads(row["detail_json"])
+                reasons = list(detail.get("reasons") or json.loads(row["reasons_json"]))
+                if reason not in reasons:
+                    reasons.append(reason)
+                started_at = str(detail.get("started_at") or row["started_at"])
+                duration_ms = max(
+                    int(row["duration_ms"]),
+                    _duration_ms_between(started_at, completed_at),
+                )
+                detail.update(
+                    {
+                        "status": "ERROR",
+                        "ended_at": completed_at_text,
+                        "duration_ms": duration_ms,
+                        "assertion_failures": int(row["assertion_failures"]),
+                        "metric_violations": int(row["metric_violations"]),
+                        "reasons": reasons,
+                    }
+                )
+                conn.execute(
+                    """
+                    UPDATE runs
+                    SET status = ?, ended_at = ?, duration_ms = ?, reasons_json = ?, detail_json = ?
+                    WHERE id = ?
+                    """,
+                    (
+                        "ERROR",
+                        completed_at_text,
+                        duration_ms,
+                        json.dumps(reasons),
+                        json.dumps(detail),
+                        row["id"],
+                    ),
+                )
+        return len(rows)
+
+    def database_status(self) -> dict[str, object]:
+        with self._managed_connection() as conn:
+            run_count = conn.execute("SELECT COUNT(*) AS count FROM runs").fetchone()["count"]
+            suite_count = conn.execute("SELECT COUNT(*) AS count FROM suites").fetchone()["count"]
+            return {
+                "path": str(self.db_path),
+                "schema_version": int(conn.execute("PRAGMA user_version").fetchone()[0]),
+                "expected_schema_version": DB_SCHEMA_VERSION,
+                "journal_mode": str(conn.execute("PRAGMA journal_mode").fetchone()[0]),
+                "synchronous": int(conn.execute("PRAGMA synchronous").fetchone()[0]),
+                "busy_timeout_ms": int(conn.execute("PRAGMA busy_timeout").fetchone()[0]),
+                "quick_check": str(conn.execute("PRAGMA quick_check(1)").fetchone()[0]),
+                "run_count": int(run_count),
+                "suite_count": int(suite_count),
+            }
+
+    def backup_database(self, destination: str | Path) -> Path:
+        destination_path = Path(destination)
+        destination_path.parent.mkdir(parents=True, exist_ok=True)
+        with closing(self._connect()) as source, closing(sqlite3.connect(destination_path)) as target:
+            source.backup(target)
+        return destination_path
+
+    def prune_runs(
+        self,
+        *,
+        keep_last: int | None = None,
+        older_than_days: int | None = None,
+    ) -> dict[str, object]:
+        if keep_last is not None and keep_last < 0:
+            raise ValueError("keep_last must be greater than or equal to 0")
+        if older_than_days is not None and older_than_days < 0:
+            raise ValueError("older_than_days must be greater than or equal to 0")
+        if keep_last is None and older_than_days is None:
+            raise ValueError("keep_last or older_than_days is required")
+
+        with self._managed_connection() as conn:
+            rows = conn.execute(
+                """
+                SELECT id, started_at, artifact_dir
+                FROM runs
+                ORDER BY started_at DESC
+                """
+            ).fetchall()
+
+        protected_ids = {row["id"] for row in rows[:keep_last]} if keep_last is not None else set()
+        cutoff = datetime.now(UTC) - timedelta(days=older_than_days) if older_than_days is not None else None
+
+        rows_to_delete = []
+        for row in rows:
+            if row["id"] in protected_ids:
+                continue
+            if cutoff is not None and _parse_datetime(row["started_at"]) >= cutoff:
+                continue
+            rows_to_delete.append(row)
+
+        run_ids = [row["id"] for row in rows_to_delete]
+        if run_ids:
+            placeholders = ",".join("?" for _ in run_ids)
+            with self._managed_connection() as conn:
+                conn.execute(f"DELETE FROM runs WHERE id IN ({placeholders})", run_ids)
+
+        deleted_artifact_dirs = 0
+        for row in rows_to_delete:
+            if self._delete_run_artifact_dir(Path(row["artifact_dir"])):
+                deleted_artifact_dirs += 1
+
+        return {
+            "deleted_runs": len(run_ids),
+            "deleted_artifact_dirs": deleted_artifact_dirs,
+            "run_ids": run_ids,
+        }
+
+    def prune_orphan_artifacts(self) -> int:
+        with self._managed_connection() as conn:
+            run_ids = {row["id"] for row in conn.execute("SELECT id FROM runs").fetchall()}
+
+        deleted = 0
+        if not self.artifacts_dir.exists():
+            return deleted
+        for path in self.artifacts_dir.iterdir():
+            if not path.is_dir() or path.name in run_ids:
+                continue
+            if self._delete_run_artifact_dir(path):
+                deleted += 1
+        return deleted
+
     def _initialize(self) -> None:
         with self._managed_connection() as conn:
+            current_schema_version = int(conn.execute("PRAGMA user_version").fetchone()[0])
+            if current_schema_version > DB_SCHEMA_VERSION:
+                raise RuntimeError(
+                    "database schema is newer than this application supports: "
+                    f"current={current_schema_version} expected={DB_SCHEMA_VERSION}"
+                )
+
             conn.executescript(
                 """
                 CREATE TABLE IF NOT EXISTS suites (
@@ -259,17 +442,37 @@ class SqliteStore:
                 );
                 """
             )
+            if current_schema_version < DB_SCHEMA_VERSION:
+                conn.execute(f"PRAGMA user_version = {DB_SCHEMA_VERSION}")
 
     def _connect(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=DB_BUSY_TIMEOUT_MS / 1000)
         conn.row_factory = sqlite3.Row
+        self._apply_connection_pragmas(conn)
         return conn
+
+    def _apply_connection_pragmas(self, conn: sqlite3.Connection) -> None:
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute(f"PRAGMA busy_timeout = {DB_BUSY_TIMEOUT_MS}")
+        conn.execute("PRAGMA journal_mode = WAL")
+        conn.execute("PRAGMA synchronous = NORMAL")
 
     @contextmanager
     def _managed_connection(self):
         with closing(self._connect()) as conn:
             with conn:
                 yield conn
+
+    def _delete_run_artifact_dir(self, artifact_dir: Path) -> bool:
+        try:
+            resolved_path = artifact_dir.resolve()
+            artifacts_root = self.artifacts_dir.resolve()
+            if resolved_path.is_dir() and artifacts_root in resolved_path.parents:
+                shutil.rmtree(resolved_path)
+                return True
+        except OSError:
+            return False
+        return False
 
 
 def slugify_suite_id(name: str) -> str:
@@ -295,3 +498,18 @@ def _run_summary_from_row(row: sqlite3.Row) -> RunSummary:
 
 def _utc_now() -> str:
     return datetime.now(UTC).isoformat()
+
+
+def _parse_datetime(value: str) -> datetime:
+    parsed = datetime.fromisoformat(value)
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
+
+
+def _duration_ms_between(started_at: str, ended_at: datetime) -> int:
+    try:
+        started = _parse_datetime(started_at)
+    except (TypeError, ValueError):
+        return 0
+    return max(0, int((ended_at - started).total_seconds() * 1000))

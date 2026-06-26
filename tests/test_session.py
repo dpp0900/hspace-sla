@@ -41,6 +41,7 @@ class SessionTests(unittest.TestCase):
 
         self.assertEqual(capabilities["app"], "/tmp/app.apk")
         self.assertTrue(capabilities["enforceAppInstall"])
+        self.assertTrue(capabilities["eventTimings"])
         self.assertNotIn("autoLaunch", capabilities)
 
     def test_installed_app_capabilities_do_not_force_install(self) -> None:

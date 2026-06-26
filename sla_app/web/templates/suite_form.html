@@ -2,9 +2,10 @@
 {% block title %}{{ title }} · SLA 테스트 러너{% endblock %}
 {% block content %}
 <section class="hero-band">
-  <div>
+  <div class="hero-copy">
     <p class="eyebrow">스위트 YAML</p>
     <h1>{{ title }}</h1>
+    <p class="hero-note">폼에서 다루기 어려운 여러 시나리오와 고급 필드를 직접 편집합니다.</p>
   </div>
   <div class="actions">
     <a class="button" href="/guide" target="_blank" rel="noreferrer">YAML 가이드</a>
@@ -20,6 +21,7 @@
   <div class="alert">{{ error }}</div>
   {% endif %}
   <form class="yaml-form" action="{{ action }}" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <label for="yaml_text">YAML</label>
     <textarea id="yaml_text" name="yaml_text" spellcheck="false">{{ yaml_text }}</textarea>
     <div class="form-actions">

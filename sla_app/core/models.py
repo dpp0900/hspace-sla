@@ -7,17 +7,41 @@ from typing import Any
 
 ALLOWED_ACTIONS = {
     "launch_app",
+    "activate_app",
+    "terminate_app",
+    "background_app",
     "tap",
     "input",
+    "back",
+    "swipe",
+    "scroll",
+    "scroll_to_text",
     "wait",
     "assert_text",
+    "assert_not_text",
     "assert_exists",
+    "assert_not_exists",
+    "assert_visible",
+    "assert_enabled",
+    "assert_attribute",
+    "assert_current_package",
+    "assert_current_activity",
     "screenshot",
     "collect_metrics",
     "metric_check",
 }
 
-ASSERTION_ACTIONS = {"assert_text", "assert_exists"}
+ASSERTION_ACTIONS = {
+    "assert_text",
+    "assert_not_text",
+    "assert_exists",
+    "assert_not_exists",
+    "assert_visible",
+    "assert_enabled",
+    "assert_attribute",
+    "assert_current_package",
+    "assert_current_activity",
+}
 
 
 @dataclass(frozen=True)
@@ -136,6 +160,11 @@ class ActionStep:
     timeout_ms: int | None = None
     name: str | None = None
     metric: str | None = None
+    direction: str | None = None
+    percent: float | None = None
+    attribute: str | None = None
+    package: str | None = None
+    activity: str | None = None
     min: float | None = None
     max: float | None = None
     raw: dict[str, Any] = field(default_factory=dict)
@@ -150,6 +179,11 @@ class ActionStep:
             timeout_ms=_optional_int(data.get("timeout_ms")),
             name=_optional_str(data.get("name")),
             metric=_optional_str(data.get("metric")),
+            direction=_optional_str(data.get("direction")),
+            percent=_optional_float(data.get("percent")),
+            attribute=_optional_str(data.get("attribute")),
+            package=_optional_str(data.get("package")),
+            activity=_optional_str(data.get("activity")),
             min=_optional_float(data.get("min")),
             max=_optional_float(data.get("max")),
             raw=dict(data),
@@ -157,7 +191,21 @@ class ActionStep:
 
     def to_dict(self) -> dict[str, Any]:
         data: dict[str, Any] = {"action": self.action}
-        for key in ("selector", "text", "value", "timeout_ms", "name", "metric", "min", "max"):
+        for key in (
+            "selector",
+            "text",
+            "value",
+            "timeout_ms",
+            "name",
+            "metric",
+            "direction",
+            "percent",
+            "attribute",
+            "package",
+            "activity",
+            "min",
+            "max",
+        ):
             value = getattr(self, key)
             if value is not None:
                 data[key] = value

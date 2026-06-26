@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}{{ suite.name }} · SLA 테스트 러너{% endblock %}
+{% block content %}
+<section class="hero-band">
+  <div class="hero-copy">
+    <p class="eyebrow">스위트 운영</p>
+    <h1>{{ suite.name }}</h1>
+    <p class="hero-note">최근 실행 안정성, 지표 변화, 실행 이력을 기준으로 다음 조치를 결정합니다.</p>
+  </div>
+  <div class="actions">
+    <form action="/suites/{{ suite.suite_id }}/runs" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button class="button primary" type="submit" hx-confirm="{{ suite.name }} 스위트를 지금 실행할까요?">실행</button>
+    </form>
+    <a class="button" href="/suites/{{ suite.suite_id }}/edit">편집</a>
+    <a class="button" href="/suites/{{ suite.suite_id }}/export">내보내기</a>
+  </div>
+</section>
+
+<section class="metric-grid">
+  <div class="metric {{ 'pass' if suite_signals.latest and suite_signals.latest.status == 'PASS' else 'fail' if suite_signals.latest else 'neutral' }}">
+    <span>최근 상태</span>
+    <strong>{{ suite_signals.latest.status if suite_signals.latest else '대기' }}</strong>
+  </div>
+  <div class="metric neutral">
+    <span>최근 20회 통과율</span>
+    <strong>{{ suite_signals.pass_rate }}%</strong>
+  </div>
+  <div class="metric neutral">
+    <span>평균 실행 시간</span>
+    <strong>{{ suite_signals.avg_duration_ms }} ms</strong>
+  </div>
+</section>
+
+<section class="ops-strip signal-strip" aria-label="스위트 운영 요약">
+  <a href="{{ '/runs/' ~ suite_signals.latest.run_id if suite_signals.latest else '/suites' }}">
+    <span>최근 실행</span>
+    <strong>{{ suite_signals.latest.started_at if suite_signals.latest else '없음' }}</strong>
+  </a>
+  <a href="{{ '/runs/' ~ suite_signals.latest_failure.run_id if suite_signals.latest_failure else '/suites' }}">
+    <span>최근 실패</span>
+    <strong>{{ suite_signals.latest_failure.started_at if suite_signals.latest_failure else '없음' }}</strong>
+  </a>
+  <a href="{{ '/runs/' ~ suite_signals.slowest.run_id if suite_signals.slowest else '/suites' }}">
+    <span>가장 느린 실행</span>
+    <strong>{{ suite_signals.slowest.duration_ms if suite_signals.slowest else 0 }} ms</strong>
+  </a>
+</section>
+
+{% if metric_summary %}
+<section class="panel">
+  <div class="section-head">
+    <div>
+      <h2>최근 수집 지표</h2>
+      <p class="section-subtitle">최신 실행의 기술 지표와 직전 실행 대비 변화를 봅니다.</p>
+    </div>
+  </div>
+  <div class="runtime-grid">
+    {% for metric in metric_summary %}
+    <article class="runtime-card {{ metric.level }}">
+      <span>{{ metric.label }}</span>
+      <strong>{{ metric.value }}</strong>
+      <p>{{ metric.delta }}</p>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% if run_history %}
+<section class="panel">
+  <div class="section-head">
+    <div>
+      <h2>최근 실행 흐름</h2>
+      <p class="section-subtitle">같은 스위트의 최근 실행 20개를 시간순으로 비교합니다.</p>
+    </div>
+  </div>
+  <div class="run-timeline" aria-label="스위트 최근 실행 흐름">
+    {% for item in run_history %}
+    <a class="timeline-row {{ item.status|lower }} {{ 'current' if item.is_current else '' }}" href="/runs/{{ item.run_id }}">
+      <span class="timeline-status">{{ item.status }}</span>
+      <span class="timeline-bar"><i style="width: {{ item.bar_percent }}%"></i></span>
+      <strong>{{ item.duration_ms }} ms</strong>
+      <small>{{ item.started_at }}</small>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% else %}
+<section class="panel">
+  <div class="empty-state compact">
+    <h2>아직 실행 기록이 없습니다</h2>
+    <p>스위트를 실행하면 통과율, 지표 변화, 최근 실행 흐름이 여기에 표시됩니다.</p>
+    <form action="/suites/{{ suite.suite_id }}/runs" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button class="button primary" type="submit">첫 실행 시작</button>
+    </form>
+  </div>
+</section>
+{% endif %}
+
+<section class="panel suite-file-panel">
+  <div class="section-head">
+    <h2>스위트 파일</h2>
+  </div>
+  <dl class="suite-meta">
+    <div>
+      <dt>ID</dt>
+      <dd>{{ suite.suite_id }}</dd>
+    </div>
+    <div>
+      <dt>YAML</dt>
+      <dd>{{ suite.yaml_path }}</dd>
+    </div>
+    <div>
+      <dt>수정일</dt>
+      <dd>{{ suite.updated_at }}</dd>
+    </div>
+  </dl>
+</section>
+{% endblock %}

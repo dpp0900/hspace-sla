@@ -1,6 +1,6 @@
 # SLA YAML Guide
 
-이 문서는 SLA Test Runner에서 사용할 수 있는 YAML 스키마와 액션을 정리합니다. 현재 MVP는 Android Appium 실행만 지원합니다.
+이 문서는 SLA Test Runner에서 사용할 수 있는 YAML 스키마와 액션을 정리합니다. 현재 버전은 Android Appium 실행을 지원합니다.
 
 ## 기본 구조
 
@@ -104,11 +104,23 @@ thresholds:
     memory_mb:
       min: 1
       max: 256
+    launch_time_ms:
+      max: 5000
+    appium_command_max_ms:
+      max: 500
+    appium_command_avg_ms:
+      max: 200
+    appium_new_session_ms:
+      max: 5000
+    cpu_percent:
+      max: 80
+    logcat_error_count:
+      max: 0
 ```
 
 주의:
 
-- `required_assertions`는 성공한 `assert_text`, `assert_exists` step만 셉니다.
+- `required_assertions`는 성공한 assertion 계열 step을 셉니다.
 - `thresholds.metrics`는 `collect_metrics`로 수집된 metric을 평가합니다.
 - 시나리오에 `thresholds`를 지정하면 해당 시나리오 기준으로 병합됩니다. 현재 구현에서 `max_assertion_failures`와 `max_metric_violations`는 생략 시 기본값 `0`이 적용되므로, 시나리오별로 완화된 값을 쓰려면 명시하세요.
 
@@ -137,7 +149,7 @@ Step은 위에서 아래로 순서대로 실행됩니다. 일반 실행 액션�
 
 ## Selectors
 
-`tap`, `input`, `assert_exists`는 selector를 사용할 수 있습니다.
+`tap`, `input`, 요소 검증 액션은 selector를 사용할 수 있습니다.
 
 지원 형식:
 
@@ -171,6 +183,51 @@ Step은 위에서 아래로 순서대로 실행됩니다. 일반 실행 액션�
 | Field | Required | Description |
 | --- | --- | --- |
 | `action` | Yes | `launch_app` |
+
+### `terminate_app`
+
+현재 앱 또는 지정한 package를 종료합니다. cold start, 재시작 복구, 백그라운드 복귀 SLA를 분리해서 볼 때 사용합니다.
+
+```yaml
+- action: terminate_app
+  package: com.example.myapp
+```
+
+필드:
+
+| Field | Required | Description |
+| --- | --- | --- |
+| `package` | No | 종료할 package입니다. 생략하면 현재 package 또는 suite의 `app_package`를 사용합니다. |
+
+### `activate_app`
+
+현재 앱 또는 지정한 package를 foreground로 활성화합니다. 이 단계의 소요 시간은 이후 `collect_metrics`의 `launch_time_ms`로 반영됩니다.
+
+```yaml
+- action: activate_app
+  package: com.example.myapp
+```
+
+필드:
+
+| Field | Required | Description |
+| --- | --- | --- |
+| `package` | No | 활성화할 package입니다. 생략하면 현재 package 또는 suite의 `app_package`를 사용합니다. |
+
+### `background_app`
+
+앱을 지정 시간 동안 백그라운드로 보냈다가 복귀합니다.
+
+```yaml
+- action: background_app
+  timeout_ms: 3000
+```
+
+필드:
+
+| Field | Required | Description |
+| --- | --- | --- |
+| `timeout_ms` | No | 백그라운드에 머무를 시간입니다. 기본값은 `1000`입니다. |
 
 ### `tap`
 
@@ -216,6 +273,75 @@ Step은 위에서 아래로 순서대로 실행됩니다. 일반 실행 액션�
 | `value` | Yes | 입력할 값입니다. 문자열/숫자/boolean을 사용할 수 있으며 문자열로 변환됩니다. |
 | `timeout_ms` | No | 요소 탐색 제한 시간입니다. 기본값은 `5000`입니다. |
 
+### `back`
+
+Android 뒤로가기 동작을 실행합니다.
+
+```yaml
+- action: back
+```
+
+필드:
+
+| Field | Required | Description |
+| --- | --- | --- |
+| `action` | Yes | `back` |
+
+### `swipe`
+
+화면 전체 또는 지정한 요소 영역에서 스와이프합니다. 요소를 지정하지 않으면 현재 화면의 안전 영역을 사용합니다.
+
+```yaml
+- action: swipe
+  direction: up
+  percent: 0.75
+```
+
+필드:
+
+| Field | Required | Description |
+| --- | --- | --- |
+| `selector` | No | 특정 요소 영역에서 제스처를 실행할 때 사용합니다. |
+| `text` | No | 표시 텍스트로 요소 영역을 찾을 때 사용합니다. |
+| `direction` | No | `up`, `down`, `left`, `right` 중 하나입니다. 기본값은 `up`입니다. |
+| `percent` | No | 스와이프 비율입니다. `0`보다 크고 `1` 이하여야 합니다. 기본값은 `0.75`입니다. |
+
+### `scroll`
+
+화면 전체 또는 지정한 요소 영역에서 스크롤합니다.
+
+```yaml
+- action: scroll
+  direction: down
+  percent: 1.0
+```
+
+필드:
+
+| Field | Required | Description |
+| --- | --- | --- |
+| `selector` | No | 특정 요소 영역에서 스크롤할 때 사용합니다. |
+| `text` | No | 표시 텍스트로 요소 영역을 찾을 때 사용합니다. |
+| `direction` | No | `up`, `down`, `left`, `right` 중 하나입니다. 기본값은 `down`입니다. |
+| `percent` | No | 스크롤 비율입니다. 기본값은 `1.0`입니다. |
+
+### `scroll_to_text`
+
+스크롤 가능한 영역에서 특정 텍스트가 보일 때까지 이동합니다.
+
+```yaml
+- action: scroll_to_text
+  text: Terms
+  timeout_ms: 8000
+```
+
+필드:
+
+| Field | Required | Description |
+| --- | --- | --- |
+| `text` | Yes | 찾을 텍스트입니다. |
+| `timeout_ms` | No | 탐색 제한 시간입니다. 기본값은 `8000`입니다. |
+
 ### `wait`
 
 지정한 시간만큼 대기합니다.
@@ -246,6 +372,23 @@ Step은 위에서 아래로 순서대로 실행됩니다. 일반 실행 액션�
 | --- | --- | --- |
 | `text` | Yes | 찾을 텍스트입니다. |
 
+### `assert_not_text`
+
+지정한 시간 안에 특정 텍스트가 현재 page source에서 사라졌는지 확인합니다. 에러 문구, 로딩 문구, 실패 배너가 남아 있지 않은지 검증할 때 사용합니다.
+
+```yaml
+- action: assert_not_text
+  text: Error
+  timeout_ms: 5000
+```
+
+필드:
+
+| Field | Required | Description |
+| --- | --- | --- |
+| `text` | Yes | 없어야 하는 텍스트입니다. |
+| `timeout_ms` | No | 텍스트가 사라질 때까지 기다릴 제한 시간입니다. 기본값은 `5000`입니다. |
+
 ### `assert_exists`
 
 요소가 존재하는지 확인합니다.
@@ -271,6 +414,110 @@ Step은 위에서 아래로 순서대로 실행됩니다. 일반 실행 액션�
 | `text` | Conditional | 표시 텍스트로 요소를 찾습니다. |
 | `timeout_ms` | No | 요소 탐색 제한 시간입니다. 기본값은 `5000`입니다. |
 
+### `assert_not_exists`
+
+지정한 시간 안에 요소가 사라졌는지 확인합니다. 로딩 spinner, 에러 다이얼로그, 차단 overlay가 남아 있지 않은지 검증할 때 사용합니다.
+
+```yaml
+- action: assert_not_exists
+  selector: id=com.example:id/error
+  timeout_ms: 5000
+```
+
+필드:
+
+| Field | Required | Description |
+| --- | --- | --- |
+| `selector` | Conditional | `selector` 또는 `text` 중 하나가 필요합니다. |
+| `text` | Conditional | 표시 텍스트로 요소를 찾습니다. |
+| `timeout_ms` | No | 요소가 사라질 때까지 기다릴 제한 시간입니다. 기본값은 `5000`입니다. |
+
+### `assert_visible`
+
+요소가 존재하고 화면에 표시되는지 확인합니다.
+
+```yaml
+- action: assert_visible
+  selector: id=com.example:id/home
+  timeout_ms: 5000
+```
+
+필드:
+
+| Field | Required | Description |
+| --- | --- | --- |
+| `selector` | Conditional | `selector` 또는 `text` 중 하나가 필요합니다. |
+| `text` | Conditional | 표시 텍스트로 요소를 찾습니다. |
+| `timeout_ms` | No | 요소 탐색 제한 시간입니다. 기본값은 `5000`입니다. |
+
+### `assert_enabled`
+
+요소가 활성화되어 조작 가능한 상태인지 확인합니다.
+
+```yaml
+- action: assert_enabled
+  selector: id=com.example:id/login
+```
+
+필드:
+
+| Field | Required | Description |
+| --- | --- | --- |
+| `selector` | Conditional | `selector` 또는 `text` 중 하나가 필요합니다. |
+| `text` | Conditional | 표시 텍스트로 요소를 찾습니다. |
+| `timeout_ms` | No | 요소 탐색 제한 시간입니다. 기본값은 `5000`입니다. |
+
+### `assert_attribute`
+
+요소의 Appium attribute 값이 기대값과 같은지 확인합니다.
+
+```yaml
+- action: assert_attribute
+  selector: id=com.example:id/login
+  attribute: enabled
+  value: "true"
+```
+
+필드:
+
+| Field | Required | Description |
+| --- | --- | --- |
+| `selector` | Conditional | `selector` 또는 `text` 중 하나가 필요합니다. |
+| `text` | Conditional | 표시 텍스트로 요소를 찾습니다. |
+| `attribute` | Yes | 확인할 attribute 이름입니다. 예: `enabled`, `checked`, `selected`. |
+| `value` | Yes | 기대값입니다. 실제 attribute 값을 문자열로 비교합니다. |
+| `timeout_ms` | No | 요소 탐색 제한 시간입니다. 기본값은 `5000`입니다. |
+
+### `assert_current_package`
+
+현재 foreground package가 기대값과 같은지 확인합니다. `*`, `?` wildcard를 사용할 수 있습니다.
+
+```yaml
+- action: assert_current_package
+  package: com.example.myapp
+```
+
+필드:
+
+| Field | Required | Description |
+| --- | --- | --- |
+| `package` | Yes | 기대하는 foreground package입니다. |
+
+### `assert_current_activity`
+
+현재 activity가 기대값과 같은지 확인합니다. `*.MainActivity`처럼 wildcard를 사용할 수 있습니다.
+
+```yaml
+- action: assert_current_activity
+  activity: "*.MainActivity"
+```
+
+필드:
+
+| Field | Required | Description |
+| --- | --- | --- |
+| `activity` | Yes | 기대하는 foreground activity입니다. |
+
 ### `screenshot`
 
 현재 화면을 PNG로 저장합니다. 파일은 `artifacts/<run_id>/` 아래에 생성됩니다.
@@ -288,7 +535,7 @@ Step은 위에서 아래로 순서대로 실행됩니다. 일반 실행 액션�
 
 ### `collect_metrics`
 
-현재 앱의 기술 지표를 수집합니다. 현재 Android 어댑터는 `dumpsys meminfo <package>`를 통해 `memory_mb`를 수집합니다.
+현재 앱의 기술 지표를 수집합니다. Android 어댑터는 Appium event timing과 `mobile: shell`을 사용해 수집 가능한 지표를 반환합니다.
 
 ```yaml
 - action: collect_metrics
@@ -299,6 +546,21 @@ Step은 위에서 아래로 순서대로 실행됩니다. 일반 실행 액션�
 | Field | Required | Description |
 | --- | --- | --- |
 | `action` | Yes | `collect_metrics` |
+
+수집 metric:
+
+| Metric | Description |
+| --- | --- |
+| `memory_mb` | `dumpsys meminfo <package>`의 `TOTAL PSS`를 MB로 변환한 값입니다. |
+| `launch_time_ms` | 마지막 `launch_app` 단계의 실행 시간입니다. 설치된 앱 실행은 `am start -W`의 `TotalTime`을 우선 사용합니다. |
+| `appium_new_session_ms` | Appium `newSessionRequested`부터 `newSessionStarted`까지의 세션 생성 시간입니다. |
+| `appium_command_count` | Appium event timing에 기록된 명령 개수입니다. |
+| `appium_command_avg_ms` | Appium 명령 처리 시간 평균입니다. |
+| `appium_command_max_ms` | Appium 명령 처리 시간 최댓값입니다. |
+| `cpu_percent` | `dumpsys cpuinfo`에서 현재 package와 하위 process CPU 사용률을 합산한 값입니다. |
+| `logcat_error_count` | 최근 logcat 500줄 중 현재 앱 PID의 `E`/`F` priority 라인 수입니다. |
+
+Appium 명령 지연 지표는 세션 capability의 `eventTimings`가 켜져 있을 때 수집됩니다. SLA Test Runner는 기본으로 이 capability를 켭니다. `memory_mb`, `cpu_percent`, `logcat_error_count`는 Android shell 접근이 막혀 있거나 기기 출력 형식이 다르면 생략될 수 있습니다. 수동 Appium 서버를 사용할 때는 `uiautomator2:adb_shell` insecure feature를 허용해야 합니다.
 
 ### `metric_check`
 
@@ -315,7 +577,7 @@ Step은 위에서 아래로 순서대로 실행됩니다. 일반 실행 액션�
 
 | Field | Required | Description |
 | --- | --- | --- |
-| `metric` | Yes | 검사할 metric 이름입니다. 현재 기본 수집 metric은 `memory_mb`입니다. |
+| `metric` | Yes | 검사할 metric 이름입니다. 예: `memory_mb`, `launch_time_ms`, `appium_command_max_ms`, `appium_command_avg_ms`, `appium_new_session_ms`, `cpu_percent`, `logcat_error_count`. |
 | `min` | Conditional | `min` 또는 `max` 중 하나 이상이 필요합니다. |
 | `max` | Conditional | `min` 또는 `max` 중 하나 이상이 필요합니다. |
 
@@ -373,7 +635,7 @@ scenarios:
 ### Metric check
 
 ```yaml
-name: Memory SLA
+name: Runtime Metrics SLA
 app:
   platform: android
   apk: test-apk/build/hspace-test-app-debug.apk
@@ -383,8 +645,18 @@ thresholds:
   metrics:
     memory_mb:
       max: 256
+    launch_time_ms:
+      max: 5000
+    appium_command_max_ms:
+      max: 500
+    appium_command_avg_ms:
+      max: 200
+    cpu_percent:
+      max: 80
+    logcat_error_count:
+      max: 0
 scenarios:
-  - name: launch memory
+  - name: launch runtime metrics
     steps:
       - action: launch_app
       - action: wait
@@ -393,6 +665,12 @@ scenarios:
       - action: metric_check
         metric: memory_mb
         max: 256
+      - action: metric_check
+        metric: launch_time_ms
+        max: 5000
+      - action: metric_check
+        metric: appium_command_max_ms
+        max: 500
 ```
 
 ## Validation Rules
@@ -409,7 +687,13 @@ YAML 저장 또는 import 시 아래 조건을 검증합니다.
 - `tap`: `selector` 또는 `text`가 필요합니다.
 - `input`: `selector`와 `value`가 필요합니다.
 - `assert_text`: `text`가 필요합니다.
-- `assert_exists`: `selector` 또는 `text`가 필요합니다.
+- `assert_not_text`: `text`가 필요합니다.
+- `assert_exists`, `assert_not_exists`: `selector` 또는 `text`가 필요합니다.
+- `scroll_to_text`: `text`가 필요합니다.
+- `assert_visible`, `assert_enabled`: `selector` 또는 `text`가 필요합니다.
+- `assert_attribute`: `selector`/`text`, `attribute`, `value`가 필요합니다.
+- `assert_current_package`: `package`가 필요합니다.
+- `assert_current_activity`: `activity`가 필요합니다.
 - `metric_check`: `metric`과 `min`/`max` 중 하나 이상이 필요합니다.
 
 ## Current Limits
@@ -417,5 +701,5 @@ YAML 저장 또는 import 시 아래 조건을 검증합니다.
 - Android만 지원합니다.
 - 브라우저, iOS, 원격 디바이스팜은 아직 지원하지 않습니다.
 - 자유 Python 코드 실행은 지원하지 않습니다.
-- `collect_metrics`는 현재 `memory_mb`만 기본 수집합니다.
-- 복잡한 gesture, swipe, scroll, orientation 변경은 아직 액션으로 제공하지 않습니다.
+- `collect_metrics`의 Appium event timing 지표는 driver/server 지원에 따라 생략될 수 있고, shell 기반 지표는 Appium 서버의 `uiautomator2:adb_shell` 허용과 기기 출력 형식에 따라 생략될 수 있습니다.
+- orientation 변경과 복잡한 multi-touch gesture는 아직 액션으로 제공하지 않습니다.

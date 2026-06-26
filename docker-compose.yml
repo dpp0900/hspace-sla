@@ -1,0 +1,56 @@
+services:
+  sla-web:
+    build:
+      context: .
+      args:
+        SLA_BUILD_SHA: ${SLA_BUILD_SHA:-local}
+    image: hspace-sla-runner:local
+    init: true
+    restart: unless-stopped
+    stop_grace_period: ${SLA_CONTAINER_STOP_GRACE_PERIOD:-45s}
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "8010:8000"
+    environment:
+      SLA_ENV: ${SLA_ENV:-local}
+      SLA_BUILD_SHA: ${SLA_BUILD_SHA:-local}
+      SLA_APP_HOME: /data
+      SLA_DB_PATH: /data/db/sla_app.db
+      SLA_WEB_HOST: 0.0.0.0
+      SLA_WEB_PORT: 8000
+      SLA_PROXY_HEADERS: ${SLA_PROXY_HEADERS:-true}
+      SLA_FORWARDED_ALLOW_IPS: ${SLA_FORWARDED_ALLOW_IPS:-127.0.0.1}
+      SLA_ROOT_PATH: ${SLA_ROOT_PATH:-}
+      SLA_GRACEFUL_SHUTDOWN_TIMEOUT: ${SLA_GRACEFUL_SHUTDOWN_TIMEOUT:-30}
+      SLA_LOG_LEVEL: ${SLA_LOG_LEVEL:-INFO}
+      SLA_MIN_FREE_DISK_MB: ${SLA_MIN_FREE_DISK_MB:-0}
+      SLA_READY_CHECK_APPIUM: ${SLA_READY_CHECK_APPIUM:-false}
+      SLA_START_APPIUM: "false"
+      SLA_BASIC_AUTH_USER: ${SLA_BASIC_AUTH_USER:-}
+      SLA_BASIC_AUTH_PASSWORD: ${SLA_BASIC_AUTH_PASSWORD:-}
+      SLA_CSRF_SECRET: ${SLA_CSRF_SECRET:-}
+      SLA_TRUSTED_ORIGINS: ${SLA_TRUSTED_ORIGINS:-}
+      SLA_ALLOWED_HOSTS: ${SLA_ALLOWED_HOSTS:-}
+      SLA_RUN_WORKERS: ${SLA_RUN_WORKERS:-1}
+      SLA_RUN_QUEUE_LIMIT: ${SLA_RUN_QUEUE_LIMIT:-10}
+      SLA_RECOVER_INCOMPLETE_RUNS: ${SLA_RECOVER_INCOMPLETE_RUNS:-true}
+      APPIUM_URL: http://host.docker.internal:4723
+    volumes:
+      - ./suites:/data/suites
+      - ./artifacts:/data/artifacts
+      - sla-db:/data/db
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/readyz', timeout=3).read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  sla-db:

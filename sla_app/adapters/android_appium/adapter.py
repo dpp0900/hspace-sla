@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import os
+import re
 import time
+from fnmatch import fnmatchcase
 from pathlib import Path
 from typing import Any
 
@@ -27,6 +29,7 @@ class AndroidAppiumAdapter:
         self.driver: Any = None
         self.appium_service: Any = None
         self._last_metrics: dict[str, float] = {}
+        self._last_launch_time_ms: int | None = None
 
     @classmethod
     def from_suite(cls, suite: TestSuite) -> "AndroidAppiumAdapter":
@@ -36,6 +39,8 @@ class AndroidAppiumAdapter:
         if self.driver is not None:
             return
 
+        started = time.monotonic()
+        launch_output = ""
         sdk_root = resolve_sdk_root(self.config.android_sdk_root)
         adb_hint = self.config.adb_path or sdk_tool_path(
             sdk_root,
@@ -48,15 +53,38 @@ class AndroidAppiumAdapter:
         capabilities = build_capabilities(self.config, serial)
         self.driver = create_driver(self.config.appium_url, capabilities)
         if requires_manual_installed_launch(self.config):
-            launch_installed_app(
+            result = launch_installed_app(
                 adb_path,
                 serial,
                 self.config.app_package or "",
                 self.config.app_activity or "",
             )
+            launch_output = result.stdout or ""
+        parsed_launch_time = _parse_am_start_total_time(launch_output)
+        self._last_launch_time_ms = (
+            parsed_launch_time
+            if parsed_launch_time is not None
+            else int((time.monotonic() - started) * 1000)
+        )
 
     def tap(self, step: ActionStep) -> None:
         self._element(step).click()
+
+    def activate_app(self, step: ActionStep) -> None:
+        self._ensure_driver()
+        package_name = self._target_package(step)
+        started = time.monotonic()
+        self.driver.activate_app(package_name)
+        self._last_launch_time_ms = int((time.monotonic() - started) * 1000)
+
+    def terminate_app(self, step: ActionStep) -> None:
+        self._ensure_driver()
+        self.driver.terminate_app(self._target_package(step))
+
+    def background_app(self, step: ActionStep) -> None:
+        self._ensure_driver()
+        seconds = (step.timeout_ms or 1000) / 1000
+        self.driver.background_app(seconds)
 
     def input(self, step: ActionStep) -> None:
         element = self._element(step)
@@ -65,6 +93,36 @@ class AndroidAppiumAdapter:
         except Exception:
             pass
         element.send_keys(str(step.value))
+
+    def back(self, step: ActionStep) -> None:
+        self._ensure_driver()
+        self.driver.back()
+
+    def swipe(self, step: ActionStep) -> None:
+        self._gesture(step, command="swipeGesture", default_direction="up", default_percent=0.75)
+
+    def scroll(self, step: ActionStep) -> None:
+        self._gesture(step, command="scrollGesture", default_direction="down", default_percent=1.0)
+
+    def scroll_to_text(self, step: ActionStep) -> None:
+        self._ensure_driver()
+        text = step.text or ""
+        timeout = (step.timeout_ms or 8000) / 1000
+        deadline = time.time() + timeout
+        last_error: Exception | None = None
+        by = _appium_by()
+        selector = (
+            "new UiScrollable(new UiSelector().scrollable(true))"
+            f".scrollIntoView(new UiSelector().textContains(\"{_escape_java_string(text)}\"))"
+        )
+        while time.time() <= deadline:
+            try:
+                self.driver.find_element(by.ANDROID_UIAUTOMATOR, selector)
+                return
+            except Exception as exc:
+                last_error = exc
+                time.sleep(0.25)
+        raise AssertionError(f"text not found after scroll: {text}") from last_error
 
     def wait(self, step: ActionStep) -> None:
         time.sleep((step.timeout_ms or 1000) / 1000)
@@ -75,8 +133,65 @@ class AndroidAppiumAdapter:
         if text not in str(self.driver.page_source):
             raise AssertionError(f"text not found: {text}")
 
+    def assert_not_text(self, step: ActionStep) -> None:
+        self._ensure_driver()
+        text = step.text or ""
+        timeout = (step.timeout_ms or 5000) / 1000
+        deadline = time.time() + timeout
+        while True:
+            if text not in str(self.driver.page_source):
+                return
+            if time.time() >= deadline:
+                raise AssertionError(f"text still present: {text}")
+            time.sleep(0.25)
+
     def assert_exists(self, step: ActionStep) -> None:
         self._element(step)
+
+    def assert_not_exists(self, step: ActionStep) -> None:
+        self._ensure_driver()
+        timeout = (step.timeout_ms or 5000) / 1000
+        deadline = time.time() + timeout
+        while True:
+            if not self._element_present(step):
+                return
+            if time.time() >= deadline:
+                raise AssertionError(f"element still present: {step.selector or step.text}")
+            time.sleep(0.25)
+
+    def assert_visible(self, step: ActionStep) -> None:
+        element = self._element(step)
+        if not element.is_displayed():
+            raise AssertionError(f"element not visible: {step.selector or step.text}")
+
+    def assert_enabled(self, step: ActionStep) -> None:
+        element = self._element(step)
+        if not element.is_enabled():
+            raise AssertionError(f"element not enabled: {step.selector or step.text}")
+
+    def assert_attribute(self, step: ActionStep) -> None:
+        element = self._element(step)
+        attribute = step.attribute or ""
+        actual = element.get_attribute(attribute)
+        expected = "" if step.value is None else str(step.value)
+        if str(actual) != expected:
+            raise AssertionError(
+                f"attribute {attribute} expected {expected}, got {actual}"
+            )
+
+    def assert_current_package(self, step: ActionStep) -> None:
+        self._ensure_driver()
+        expected = step.package or (str(step.value) if step.value is not None else "")
+        actual = self._current_package()
+        if not actual or not _matches_expected(actual, expected):
+            raise AssertionError(f"package expected {expected}, got {actual or 'unknown'}")
+
+    def assert_current_activity(self, step: ActionStep) -> None:
+        self._ensure_driver()
+        expected = step.activity or (str(step.value) if step.value is not None else "")
+        actual = self._current_activity()
+        if not actual or not _matches_expected(actual, expected):
+            raise AssertionError(f"activity expected {expected}, got {actual or 'unknown'}")
 
     def screenshot(self, step: ActionStep, artifact_dir: Path) -> str:
         self._ensure_driver()
@@ -91,8 +206,19 @@ class AndroidAppiumAdapter:
         current_package = getattr(self.driver, "current_package", None)
         if callable(current_package):
             current_package = current_package()
+        current_package = current_package or self.config.app_package
+        if self._last_launch_time_ms is not None:
+            metrics["launch_time_ms"] = self._last_launch_time_ms
         if current_package:
-            metrics.update(self._collect_meminfo(str(current_package)))
+            package_name = str(current_package)
+            metrics.update(self._collect_meminfo(package_name))
+            cpu_percent = self._collect_cpu_percent(package_name)
+            if cpu_percent is not None:
+                metrics["cpu_percent"] = cpu_percent
+            logcat_errors = self._collect_logcat_errors(package_name)
+            if logcat_errors is not None:
+                metrics["logcat_error_count"] = logcat_errors
+        metrics.update(self._collect_event_timing_metrics())
         self._last_metrics.update(metrics)
         return metrics
 
@@ -122,22 +248,99 @@ class AndroidAppiumAdapter:
                 time.sleep(0.25)
         raise AssertionError(f"element not found: {step.selector or step.text}") from last_error
 
+    def _element_present(self, step: ActionStep) -> bool:
+        by, value = _locator(step)
+        try:
+            self.driver.find_element(by, value)
+            return True
+        except Exception:
+            return False
+
+    def _target_package(self, step: ActionStep) -> str:
+        package_name = (
+            step.package
+            or (str(step.value) if step.value is not None else None)
+            or self._current_package()
+            or self.config.app_package
+        )
+        if not package_name:
+            raise AssertionError("app package is unavailable")
+        return str(package_name)
+
+    def _current_package(self) -> str | None:
+        value = getattr(self.driver, "current_package", None)
+        if callable(value):
+            value = value()
+        return str(value) if value else None
+
+    def _current_activity(self) -> str | None:
+        value = getattr(self.driver, "current_activity", None)
+        if callable(value):
+            value = value()
+        return str(value) if value else None
+
+    def _gesture(
+        self,
+        step: ActionStep,
+        *,
+        command: str,
+        default_direction: str,
+        default_percent: float,
+    ) -> None:
+        self._ensure_driver()
+        args: dict[str, object] = {
+            "direction": _gesture_direction(step.direction or step.value, default_direction),
+            "percent": step.percent if step.percent is not None else default_percent,
+        }
+        if step.selector or step.text:
+            element = self._element(step)
+            element_id = _element_id(element)
+            if element_id:
+                args["elementId"] = element_id
+            else:
+                args.update(_rect_bounds(getattr(element, "rect", None)))
+        else:
+            args.update(_window_gesture_bounds(self.driver))
+        self.driver.execute_script(f"mobile: {command}", args)
+
     def _collect_meminfo(self, package_name: str) -> dict[str, float]:
+        text = self._shell("dumpsys", ["meminfo", package_name], timeout=5000)
+        pss_kb = _parse_meminfo_total_pss_kb(text)
+        if pss_kb is not None:
+            return {"memory_mb": round(pss_kb / 1024, 2)}
+        return {}
+
+    def _collect_cpu_percent(self, package_name: str) -> float | None:
+        text = self._shell("dumpsys", ["cpuinfo"], timeout=5000)
+        return _parse_cpu_percent(text, package_name)
+
+    def _collect_logcat_errors(self, package_name: str) -> int | None:
+        pid_text = self._shell("pidof", [package_name], timeout=3000)
+        pids = _parse_pids(pid_text)
+        if not pids:
+            return None
+        log_text = self._shell("logcat", ["-d", "-t", "500", "-v", "threadtime"], timeout=8000)
+        return _count_logcat_errors(log_text, pids)
+
+    def _collect_event_timing_metrics(self) -> dict[str, float]:
+        try:
+            get_events = getattr(self.driver, "get_events", None)
+            events = get_events() if callable(get_events) else getattr(self.driver, "events", None)
+        except Exception:
+            return {}
+        return _event_timing_metrics(events)
+
+    def _shell(self, command: str, args: list[str], *, timeout: int) -> str:
         try:
             result = self.driver.execute_script(
                 "mobile: shell",
-                {"command": "dumpsys", "args": ["meminfo", package_name]},
+                {"command": command, "args": args, "timeout": timeout},
             )
         except Exception:
-            return {}
-        text = str(result)
-        for line in text.splitlines():
-            if "TOTAL PSS:" in line:
-                parts = line.replace(":", " ").split()
-                for item in parts:
-                    if item.isdigit():
-                        return {"memory_mb": round(int(item) / 1024, 2)}
-        return {}
+            return ""
+        if isinstance(result, dict):
+            return str(result.get("stdout") or "")
+        return str(result or "")
 
     def _ensure_driver(self) -> None:
         if self.driver is None:
@@ -184,10 +387,7 @@ def _resolve_relative_path(path: str, source_path: Path | None) -> str:
 
 
 def _locator(step: ActionStep) -> tuple[str, str]:
-    try:
-        from appium.webdriver.common.appiumby import AppiumBy
-    except ImportError as exc:
-        raise RuntimeError("Appium-Python-Client is required for Android execution") from exc
+    AppiumBy = _appium_by()
 
     if step.text:
         xpath = f'//*[@text="{step.text}" or contains(@text, "{step.text}")]'
@@ -210,6 +410,165 @@ def _locator(step: ActionStep) -> tuple[str, str]:
     if selector.startswith("/"):
         return AppiumBy.XPATH, selector
     return AppiumBy.ID, selector
+
+
+def _appium_by():
+    try:
+        from appium.webdriver.common.appiumby import AppiumBy
+    except ImportError as exc:
+        raise RuntimeError("Appium-Python-Client is required for Android execution") from exc
+    return AppiumBy
+
+
+def _gesture_direction(value: object, default: str) -> str:
+    direction = str(value or default).strip().lower()
+    if direction not in {"up", "down", "left", "right"}:
+        raise AssertionError(f"unsupported gesture direction: {direction}")
+    return direction
+
+
+def _element_id(element) -> str | None:
+    element_id = getattr(element, "id", None) or getattr(element, "_id", None)
+    if element_id:
+        return str(element_id)
+    return None
+
+
+def _rect_bounds(rect: object) -> dict[str, int]:
+    if not isinstance(rect, dict):
+        raise AssertionError("gesture target has no usable bounds")
+    return {
+        "left": int(rect.get("x", 0)),
+        "top": int(rect.get("y", 0)),
+        "width": max(1, int(rect.get("width", 1))),
+        "height": max(1, int(rect.get("height", 1))),
+    }
+
+
+def _window_gesture_bounds(driver) -> dict[str, int]:
+    size = driver.get_window_size()
+    width = int(size.get("width", 0))
+    height = int(size.get("height", 0))
+    if width <= 0 or height <= 0:
+        raise AssertionError("device window size is unavailable")
+    return {
+        "left": int(width * 0.05),
+        "top": int(height * 0.05),
+        "width": max(1, int(width * 0.9)),
+        "height": max(1, int(height * 0.85)),
+    }
+
+
+def _escape_java_string(value: str) -> str:
+    return value.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def _parse_am_start_total_time(output: str) -> int | None:
+    match = re.search(r"\bTotalTime:\s*(\d+)", output)
+    if match:
+        return int(match.group(1))
+    return None
+
+
+def _parse_meminfo_total_pss_kb(output: str) -> int | None:
+    match = re.search(r"\bTOTAL\s+PSS:\s*(\d+)", output)
+    if match:
+        return int(match.group(1))
+    return None
+
+
+def _parse_cpu_percent(output: str, package_name: str) -> float | None:
+    total = 0.0
+    matched = False
+    for line in output.splitlines():
+        match = re.match(r"\s*([0-9]+(?:\.[0-9]+)?)%\s+\d+/([^:\s]+)", line)
+        if not match:
+            continue
+        process_name = match.group(2)
+        if process_name == package_name or process_name.startswith(f"{package_name}:"):
+            matched = True
+            total += float(match.group(1))
+    if not matched:
+        return None
+    return round(total, 2)
+
+
+def _parse_pids(output: str) -> set[str]:
+    return {item for item in output.split() if item.isdigit()}
+
+
+def _count_logcat_errors(output: str, pids: set[str]) -> int:
+    count = 0
+    for line in output.splitlines():
+        parts = line.split(maxsplit=6)
+        if len(parts) < 5:
+            continue
+        pid = parts[2]
+        priority = parts[4]
+        if pid in pids and priority in {"E", "F"}:
+            count += 1
+    return count
+
+
+def _event_timing_metrics(events: object) -> dict[str, float]:
+    if not isinstance(events, dict):
+        return {}
+
+    metrics: dict[str, float] = {}
+    command_durations = _command_durations_ms(events.get("commands"))
+    if command_durations:
+        metrics["appium_command_count"] = float(len(command_durations))
+        metrics["appium_command_avg_ms"] = round(sum(command_durations) / len(command_durations), 2)
+        metrics["appium_command_max_ms"] = round(max(command_durations), 2)
+
+    new_session_ms = _event_span_ms(events, "newSessionRequested", "newSessionStarted")
+    if new_session_ms is not None:
+        metrics["appium_new_session_ms"] = new_session_ms
+    return metrics
+
+
+def _command_durations_ms(commands: object) -> list[float]:
+    if not isinstance(commands, list):
+        return []
+    durations: list[float] = []
+    for command in commands:
+        if not isinstance(command, dict):
+            continue
+        started = _numeric(command.get("startTime"))
+        ended = _numeric(command.get("endTime"))
+        if started is None or ended is None or ended < started:
+            continue
+        durations.append(round(ended - started, 2))
+    return durations
+
+
+def _event_span_ms(events: dict[str, object], start_name: str, end_name: str) -> float | None:
+    started = _first_numeric(events.get(start_name))
+    ended = _first_numeric(events.get(end_name))
+    if started is None or ended is None or ended < started:
+        return None
+    return round(ended - started, 2)
+
+
+def _first_numeric(value: object) -> float | None:
+    if isinstance(value, list):
+        for item in value:
+            parsed = _numeric(item)
+            if parsed is not None:
+                return parsed
+        return None
+    return _numeric(value)
+
+
+def _numeric(value: object) -> float | None:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _matches_expected(actual: str, expected: str) -> bool:
+    return fnmatchcase(actual, expected) if any(char in expected for char in "*?[]") else actual == expected
 
 
 def _safe_file_name(value: str) -> str:

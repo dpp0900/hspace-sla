@@ -2,9 +2,10 @@
 {% block title %}YAML 가이드 · SLA 테스트 러너{% endblock %}
 {% block content %}
 <section class="hero-band">
-  <div>
+  <div class="hero-copy">
     <p class="eyebrow">참고 문서</p>
     <h1>YAML 가이드</h1>
+    <p class="hero-note">스위트 구조, selector 형식, 지원 액션을 실행 가능한 예시 중심으로 확인합니다.</p>
   </div>
   <a class="button primary" href="/suites/builder">새 스위트 만들기</a>
 </section>
@@ -25,7 +26,7 @@
       <div class="section-head">
         <h2>기본 구조</h2>
       </div>
-      <p>현재 MVP는 Android Appium 실행만 지원합니다. YAML은 suite metadata, app target, SLA thresholds, scenarios로 구성됩니다.</p>
+      <p>현재 버전은 Android Appium 실행을 지원합니다. YAML은 suite metadata, app target, SLA thresholds, scenarios로 구성됩니다.</p>
       <pre><code>name: Android Smoke
 app:
   platform: android
@@ -117,7 +118,17 @@ scenarios:
   required_assertions: 1
   metrics:
     memory_mb:
-      max: 256</code></pre>
+      max: 256
+    launch_time_ms:
+      max: 5000
+    appium_command_max_ms:
+      max: 500
+    appium_command_avg_ms:
+      max: 200
+    cpu_percent:
+      max: 80
+    logcat_error_count:
+      max: 0</code></pre>
       <div class="table-wrap">
         <table>
           <thead>
@@ -142,7 +153,7 @@ scenarios:
       <div class="section-head">
         <h2>Selector</h2>
       </div>
-      <p><code>tap</code>, <code>input</code>, <code>assert_exists</code>에서 사용할 수 있습니다. <code>text</code>와 <code>selector</code>를 같이 넣으면 현재 Android 어댑터는 <code>text</code>를 우선합니다.</p>
+      <p><code>tap</code>, <code>input</code>, 요소 검증 액션에서 사용할 수 있습니다. <code>text</code>와 <code>selector</code>를 같이 넣으면 현재 Android 어댑터는 <code>text</code>를 우선합니다.</p>
       <div class="table-wrap">
         <table>
           <thead>
@@ -178,6 +189,24 @@ scenarios:
           <pre><code>- action: launch_app</code></pre>
         </article>
         <article class="action-card">
+          <h3><code>terminate_app</code></h3>
+          <p>현재 앱 또는 지정한 package를 종료해 cold start와 재시작 SLA를 분리합니다.</p>
+          <pre><code>- action: terminate_app
+  package: com.example.myapp</code></pre>
+        </article>
+        <article class="action-card">
+          <h3><code>activate_app</code></h3>
+          <p>현재 앱 또는 지정한 package를 foreground로 활성화합니다.</p>
+          <pre><code>- action: activate_app
+  package: com.example.myapp</code></pre>
+        </article>
+        <article class="action-card">
+          <h3><code>background_app</code></h3>
+          <p>앱을 지정 시간 동안 백그라운드로 보냈다가 복귀합니다.</p>
+          <pre><code>- action: background_app
+  timeout_ms: 3000</code></pre>
+        </article>
+        <article class="action-card">
           <h3><code>tap</code></h3>
           <p><code>selector</code> 또는 <code>text</code>로 요소를 찾아 탭합니다.</p>
           <pre><code>- action: tap
@@ -192,6 +221,31 @@ scenarios:
   value: user@example.com</code></pre>
         </article>
         <article class="action-card">
+          <h3><code>back</code></h3>
+          <p>Android 뒤로가기 동작을 실행합니다.</p>
+          <pre><code>- action: back</code></pre>
+        </article>
+        <article class="action-card">
+          <h3><code>swipe</code></h3>
+          <p>화면 전체 또는 특정 요소 영역에서 지정 방향으로 스와이프합니다.</p>
+          <pre><code>- action: swipe
+  direction: up
+  percent: 0.75</code></pre>
+        </article>
+        <article class="action-card">
+          <h3><code>scroll</code></h3>
+          <p>화면 전체 또는 특정 요소 영역에서 스크롤합니다.</p>
+          <pre><code>- action: scroll
+  direction: down
+  percent: 1.0</code></pre>
+        </article>
+        <article class="action-card">
+          <h3><code>scroll_to_text</code></h3>
+          <p>스크롤 가능한 영역에서 특정 텍스트가 보일 때까지 이동합니다.</p>
+          <pre><code>- action: scroll_to_text
+  text: Terms</code></pre>
+        </article>
+        <article class="action-card">
           <h3><code>wait</code></h3>
           <p><code>timeout_ms</code>만큼 대기합니다. 기본값은 1000ms입니다.</p>
           <pre><code>- action: wait
@@ -204,10 +258,56 @@ scenarios:
   text: Welcome</code></pre>
         </article>
         <article class="action-card">
+          <h3><code>assert_not_text</code></h3>
+          <p>에러 문구나 로딩 문구처럼 남아 있으면 안 되는 텍스트가 사라졌는지 확인합니다.</p>
+          <pre><code>- action: assert_not_text
+  text: Error
+  timeout_ms: 5000</code></pre>
+        </article>
+        <article class="action-card">
           <h3><code>assert_exists</code></h3>
           <p><code>selector</code> 또는 <code>text</code>로 요소 존재 여부를 확인합니다.</p>
           <pre><code>- action: assert_exists
   selector: id=com.example:id/home</code></pre>
+        </article>
+        <article class="action-card">
+          <h3><code>assert_not_exists</code></h3>
+          <p>로딩 spinner, 에러 다이얼로그, 차단 overlay가 사라졌는지 확인합니다.</p>
+          <pre><code>- action: assert_not_exists
+  selector: id=com.example:id/error
+  timeout_ms: 5000</code></pre>
+        </article>
+        <article class="action-card">
+          <h3><code>assert_visible</code></h3>
+          <p>요소가 존재하고 화면에 표시되는지 확인합니다.</p>
+          <pre><code>- action: assert_visible
+  selector: id=com.example:id/home</code></pre>
+        </article>
+        <article class="action-card">
+          <h3><code>assert_enabled</code></h3>
+          <p>요소가 활성화되어 조작 가능한 상태인지 확인합니다.</p>
+          <pre><code>- action: assert_enabled
+  selector: id=com.example:id/login</code></pre>
+        </article>
+        <article class="action-card">
+          <h3><code>assert_attribute</code></h3>
+          <p>요소의 Appium attribute 값이 기대값과 같은지 확인합니다.</p>
+          <pre><code>- action: assert_attribute
+  selector: id=com.example:id/login
+  attribute: enabled
+  value: "true"</code></pre>
+        </article>
+        <article class="action-card">
+          <h3><code>assert_current_package</code></h3>
+          <p>현재 foreground package가 기대값과 같은지 확인합니다. wildcard를 사용할 수 있습니다.</p>
+          <pre><code>- action: assert_current_package
+  package: com.example.myapp</code></pre>
+        </article>
+        <article class="action-card">
+          <h3><code>assert_current_activity</code></h3>
+          <p>현재 activity가 기대값과 같은지 확인합니다. wildcard를 사용할 수 있습니다.</p>
+          <pre><code>- action: assert_current_activity
+  activity: "*.MainActivity"</code></pre>
         </article>
         <article class="action-card">
           <h3><code>screenshot</code></h3>
@@ -217,7 +317,7 @@ scenarios:
         </article>
         <article class="action-card">
           <h3><code>collect_metrics</code></h3>
-          <p>현재 앱의 기술 지표를 수집합니다. 현재 기본 metric은 <code>memory_mb</code>입니다.</p>
+          <p>현재 앱의 기술 지표를 수집합니다. 기본 metric은 <code>memory_mb</code>, <code>launch_time_ms</code>, <code>appium_new_session_ms</code>, <code>appium_command_avg_ms</code>, <code>appium_command_max_ms</code>, <code>cpu_percent</code>, <code>logcat_error_count</code>입니다.</p>
           <pre><code>- action: collect_metrics</code></pre>
         </article>
         <article class="action-card">
@@ -268,8 +368,18 @@ thresholds:
   metrics:
     memory_mb:
       max: 256
+    launch_time_ms:
+      max: 5000
+    appium_command_max_ms:
+      max: 500
+    appium_command_avg_ms:
+      max: 200
+    cpu_percent:
+      max: 80
+    logcat_error_count:
+      max: 0
 scenarios:
-  - name: launch memory
+  - name: launch runtime metrics
     steps:
       - action: launch_app
       - action: wait
@@ -277,7 +387,13 @@ scenarios:
       - action: collect_metrics
       - action: metric_check
         metric: memory_mb
-        max: 256</code></pre>
+        max: 256
+      - action: metric_check
+        metric: launch_time_ms
+        max: 5000
+      - action: metric_check
+        metric: appium_command_max_ms
+        max: 500</code></pre>
     </section>
 
     <section id="validation" class="panel guide-section">
@@ -292,11 +408,17 @@ scenarios:
         <li><code>tap</code>은 <code>selector</code> 또는 <code>text</code>가 필요합니다.</li>
         <li><code>input</code>은 <code>selector</code>와 <code>value</code>가 필요합니다.</li>
         <li><code>assert_text</code>는 <code>text</code>가 필요합니다.</li>
-        <li><code>assert_exists</code>는 <code>selector</code> 또는 <code>text</code>가 필요합니다.</li>
+        <li><code>assert_not_text</code>는 <code>text</code>가 필요합니다.</li>
+        <li><code>assert_exists</code>, <code>assert_not_exists</code>는 <code>selector</code> 또는 <code>text</code>가 필요합니다.</li>
+        <li><code>scroll_to_text</code>는 <code>text</code>가 필요합니다.</li>
+        <li><code>assert_visible</code>, <code>assert_enabled</code>는 <code>selector</code> 또는 <code>text</code>가 필요합니다.</li>
+        <li><code>assert_attribute</code>는 <code>selector</code>/<code>text</code>, <code>attribute</code>, <code>value</code>가 필요합니다.</li>
+        <li><code>assert_current_package</code>는 <code>package</code>가 필요합니다.</li>
+        <li><code>assert_current_activity</code>는 <code>activity</code>가 필요합니다.</li>
         <li><code>metric_check</code>는 <code>metric</code>과 <code>min</code>/<code>max</code> 중 하나 이상이 필요합니다.</li>
       </ul>
       <div class="guide-note">
-        현재 제한: Android만 지원하며, browser/iOS/device farm, 자유 Python 코드, swipe/scroll/orientation 액션은 아직 제공하지 않습니다.
+        현재 제한: Android만 지원하며, browser/iOS/device farm, 자유 Python 코드, orientation 변경과 복잡한 multi-touch gesture는 아직 제공하지 않습니다.
       </div>
     </section>
   </div>

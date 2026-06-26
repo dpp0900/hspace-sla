@@ -2,12 +2,14 @@
 {% block title %}{{ suite.name }} 편집 · SLA 테스트 러너{% endblock %}
 {% block content %}
 <section class="hero-band">
-  <div>
+  <div class="hero-copy">
     <p class="eyebrow">편집 방식 선택</p>
     <h1>{{ suite.name }}</h1>
+    <p class="hero-note">지원 범위 안의 스위트는 쉬운 편집으로 빠르게 고치고, 고급 YAML은 원문을 유지합니다.</p>
   </div>
   <div class="actions">
     <form action="/suites/{{ suite.suite_id }}/runs" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <button class="button primary" type="submit" hx-confirm="{{ suite.name }} 스위트를 지금 실행할까요?">실행</button>
     </form>
     <a class="button" href="/suites">뒤로</a>

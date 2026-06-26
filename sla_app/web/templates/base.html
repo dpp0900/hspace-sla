@@ -3,19 +3,23 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    {% block head_extra %}{% endblock %}
     <title>{% block title %}SLA 테스트 러너{% endblock %}</title>
     <link rel="stylesheet" href="/static/styles.css">
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
   </head>
   <body>
     <header class="topbar">
-      <a class="brand" href="/">SLA 테스트 러너</a>
-      <nav class="nav">
-        <a class="{{ 'active' if active == 'dashboard' else '' }}" href="/">대시보드</a>
-        <a class="{{ 'active' if active == 'suites' else '' }}" href="/suites">테스트 스위트</a>
-        <a class="{{ 'active' if active == 'guide' else '' }}" href="/guide">YAML 가이드</a>
-        <a class="{{ 'active' if active == 'settings' else '' }}" href="/settings">설정</a>
-      </nav>
+      <div class="topbar-inner">
+        <a class="brand" href="/"><span class="brand-mark">SLA</span><span>테스트 러너</span></a>
+        <nav class="nav" aria-label="주요 화면">
+          <a class="{{ 'active' if active == 'dashboard' else '' }}" href="/">대시보드</a>
+          <a class="{{ 'active' if active == 'suites' else '' }}" href="/suites">테스트 스위트</a>
+          <a class="{{ 'active' if active == 'guide' else '' }}" href="/guide">YAML 가이드</a>
+          <a class="{{ 'active' if active == 'settings' else '' }}" href="/settings">설정</a>
+        </nav>
+      </div>
     </header>
     <main class="shell">
       {% block content %}{% endblock %}

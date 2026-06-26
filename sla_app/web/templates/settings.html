@@ -2,9 +2,10 @@
 {% block title %}설정 · SLA 테스트 러너{% endblock %}
 {% block content %}
 <section class="hero-band">
-  <div>
+  <div class="hero-copy">
     <p class="eyebrow">Android 환경</p>
     <h1>설정</h1>
+    <p class="hero-note">실행 실패를 만들기 쉬운 SDK, ADB, Appium, AVD 상태를 실행 전에 확인합니다.</p>
   </div>
 </section>
 
@@ -31,6 +32,63 @@
       <strong>{{ avd_home }}</strong>
     </div>
   </div>
+</section>
+
+<section class="panel">
+  <div class="section-head">
+    <div>
+      <h2>운영 데이터</h2>
+      <p class="section-subtitle">SQLite, 스위트 파일, 실행 아티팩트를 백업하고 오래된 실행 이력을 정리합니다.</p>
+    </div>
+    <a class="button primary" href="/settings/backup.zip">백업 ZIP 다운로드</a>
+  </div>
+  {% if maintenance.notice %}
+  <div class="alert">{{ maintenance.notice }}</div>
+  {% endif %}
+  <div class="settings-grid ops-grid">
+    <div>
+      <span class="label">실행 이력</span>
+      <strong>{{ maintenance.run_count }}개</strong>
+    </div>
+    <div>
+      <span class="label">스위트</span>
+      <strong>{{ maintenance.suite_count }}개</strong>
+    </div>
+    <div>
+      <span class="label">DB</span>
+      <strong>{{ maintenance.db_path }}</strong>
+      <span class="muted">{{ maintenance.db_size }}</span>
+    </div>
+    <div>
+      <span class="label">아티팩트</span>
+      <strong>{{ maintenance.artifact_dir }}</strong>
+      <span class="muted">{{ maintenance.artifact_size }}</span>
+    </div>
+    <div>
+      <span class="label">접근 보호</span>
+      <strong class="{{ 'ok' if maintenance.auth_enabled else 'bad' }}">{{ '켜짐' if maintenance.auth_enabled else '꺼짐' }}</strong>
+    </div>
+  </div>
+  <form class="maintenance-form" method="post" action="/settings/maintenance/prune-runs">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="field-grid compact">
+      <label>
+        <span>최근 실행 보존</span>
+        <input type="number" name="keep_last" min="0" value="{{ maintenance.retention_keep_last }}">
+      </label>
+      <label>
+        <span>일수 기준</span>
+        <input type="number" name="older_than_days" min="0" value="{{ maintenance.retention_days }}">
+      </label>
+    </div>
+    <label class="checkbox-field">
+      <input type="checkbox" name="delete_orphan_artifacts" value="true" checked>
+      <span>실행 이력과 연결되지 않은 아티팩트도 정리</span>
+    </label>
+    <div class="form-actions">
+      <button class="button danger" type="submit">오래된 실행 정리</button>
+    </div>
+  </form>
 </section>
 
 <section class="panel">

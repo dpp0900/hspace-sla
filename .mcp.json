@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "hspace-sla": {
+      "type": "stdio",
+      "command": "python3",
+      "args": ["-m", "sla_app.mcp"],
+      "env": {
+        "SLA_APP_HOME": ".",
+        "SLA_MCP_ALLOW_WRITES": "false",
+        "SLA_MCP_ALLOW_RUNS": "false"
+      }
+    }
+  }
+}

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 from typing import TYPE_CHECKING
 
 from .console import fail
@@ -18,6 +19,7 @@ def build_capabilities(config: LaunchConfig, serial: str) -> dict[str, object]:
         "autoGrantPermissions": True,
         "newCommandTimeout": 180,
         "noReset": config.no_reset,
+        "eventTimings": True,
     }
 
     if config.apk:
@@ -40,8 +42,13 @@ def requires_manual_installed_launch(config: LaunchConfig) -> bool:
     return bool(config.app_package and config.app_activity and not config.apk)
 
 
-def launch_installed_app(adb_path: str, serial: str, package: str, activity: str) -> None:
-    run_command(
+def launch_installed_app(
+    adb_path: str,
+    serial: str,
+    package: str,
+    activity: str,
+) -> subprocess.CompletedProcess[str]:
+    return run_command(
         [
             adb_path,
             "-s",

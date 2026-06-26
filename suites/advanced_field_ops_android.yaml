@@ -1,0 +1,123 @@
+name: Android Field Ops Advanced SLA
+app:
+  platform: android
+  apk: test-apk/build/hspace-test-app-debug.apk
+thresholds:
+  max_assertion_failures: 0
+  max_metric_violations: 0
+  max_duration_ms: 180000
+  required_assertions: 16
+  metrics:
+    memory_mb:
+      max: 512.0
+    launch_time_ms:
+      max: 60000.0
+    appium_command_max_ms:
+      max: 15000.0
+scenarios:
+- name: login search incident and runtime baseline
+  steps:
+  - action: launch_app
+  - action: wait
+    timeout_ms: 1000
+  - action: assert_current_package
+    package: com.hspace.testapp
+  - action: assert_current_activity
+    activity: '*.MainActivity'
+  - action: assert_text
+    text: HSPACE Appium Test
+  - action: assert_exists
+    selector: accessibility_id=status_text
+  - action: assert_not_text
+    text: 'Login Error: credentials required'
+  - action: tap
+    selector: accessibility_id=login_button
+  - action: assert_text
+    text: 'Login Error: credentials required'
+  - action: input
+    selector: accessibility_id=email_input
+    value: operator@hspace.local
+  - action: input
+    selector: accessibility_id=password_input
+    value: sla-demo-pass
+  - action: tap
+    selector: accessibility_id=login_button
+  - action: assert_not_text
+    text: 'Login Error: credentials required'
+  - action: assert_text
+    text: Field Ops Dashboard
+  - action: assert_visible
+    selector: accessibility_id=dashboard_panel
+  - action: assert_text
+    text: 'SLA Candidate: checkout latency p95 under 250 ms'
+  - action: input
+    selector: accessibility_id=search_input
+    value: checkout
+  - action: tap
+    selector: accessibility_id=search_button
+  - action: assert_text
+    text: 'Result: Checkout API - Degraded'
+  - action: assert_exists
+    selector: accessibility_id=checkout_card
+  - action: assert_enabled
+    selector: accessibility_id=dispatch_button
+  - action: assert_attribute
+    selector: accessibility_id=dispatch_button
+    value: 'true'
+    attribute: enabled
+  - action: tap
+    selector: accessibility_id=filter_critical_button
+  - action: assert_text
+    text: 'Filter: Critical Only'
+  - action: tap
+    selector: accessibility_id=open_checkout_detail
+  - action: assert_text
+    text: Checkout Detail
+  - action: assert_visible
+    selector: accessibility_id=checkout_detail_panel
+  - action: assert_text
+    text: 'Latency p95: 238 ms'
+  - action: scroll_to_text
+    text: Acknowledge Incident
+  - action: tap
+    selector: accessibility_id=ack_button
+  - action: assert_text
+    text: Incident Acknowledged
+  - action: screenshot
+    name: checkout-detail
+  - action: scroll_to_text
+    text: Notification Settings
+  - action: assert_enabled
+    selector: accessibility_id=alerts_toggle
+  - action: tap
+    selector: accessibility_id=alerts_toggle
+  - action: assert_text
+    text: 'Alerts: Off'
+  - action: assert_attribute
+    selector: accessibility_id=alerts_toggle
+    value: 'false'
+    attribute: checked
+  - action: scroll_to_text
+    text: Complete Drill
+  - action: assert_visible
+    selector: accessibility_id=run_drill_button
+  - action: tap
+    selector: accessibility_id=run_drill_button
+  - action: assert_text
+    text: Drill Complete
+  - action: background_app
+    timeout_ms: 1000
+  - action: activate_app
+    package: com.hspace.testapp
+  - action: assert_text
+    text: Drill Complete
+  - action: collect_metrics
+  - action: metric_check
+    metric: launch_time_ms
+    max: 60000.0
+  - action: metric_check
+    metric: memory_mb
+    max: 512.0
+  - action: metric_check
+    metric: appium_command_max_ms
+    max: 15000.0

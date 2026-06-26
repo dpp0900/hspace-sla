@@ -2,9 +2,10 @@
 {% block title %}{{ title|default("쉬운 생성기") }} · SLA 테스트 러너{% endblock %}
 {% block content %}
 <section class="hero-band">
-  <div>
+  <div class="hero-copy">
     <p class="eyebrow">{{ eyebrow|default("코드 없이 스위트 만들기") }}</p>
     <h1>{{ title|default("쉬운 생성기") }}</h1>
+    <p class="hero-note">대상 앱, SLA 기준, 화면 요소, 실행 스텝을 한 번에 정리합니다.</p>
   </div>
   <div class="actions">
     <a class="button" href="/guide" target="_blank" rel="noreferrer">YAML 가이드</a>
@@ -22,6 +23,7 @@
 {% endif %}
 
 <form class="builder-form" action="{{ action|default('/suites/builder') }}" method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <section class="builder-grid">
     <div class="panel builder-panel">
       <div class="section-head">
@@ -115,6 +117,30 @@
           <span>최대 메모리(MB)</span>
           <input type="number" min="0" step="0.1" name="memory_mb_max" value="{{ builder.memory_mb_max }}">
         </label>
+        <label>
+          <span>최대 실행 지연(ms)</span>
+          <input type="number" min="0" step="1" name="launch_time_ms_max" value="{{ builder.launch_time_ms_max }}">
+        </label>
+        <label>
+          <span>최대 세션 생성(ms)</span>
+          <input type="number" min="0" step="1" name="appium_new_session_ms_max" value="{{ builder.appium_new_session_ms_max }}">
+        </label>
+        <label>
+          <span>명령 최대 지연(ms)</span>
+          <input type="number" min="0" step="1" name="appium_command_max_ms_max" value="{{ builder.appium_command_max_ms_max }}">
+        </label>
+        <label>
+          <span>명령 평균 지연(ms)</span>
+          <input type="number" min="0" step="1" name="appium_command_avg_ms_max" value="{{ builder.appium_command_avg_ms_max }}">
+        </label>
+        <label>
+          <span>최대 CPU(%)</span>
+          <input type="number" min="0" step="0.1" name="cpu_percent_max" value="{{ builder.cpu_percent_max }}">
+        </label>
+        <label>
+          <span>로그 에러 허용 수</span>
+          <input type="number" min="0" step="1" name="logcat_error_count_max" value="{{ builder.logcat_error_count_max }}">
+        </label>
       </div>
     </div>
   </section>
@@ -161,7 +187,7 @@
 </form>
 
 <template data-step-template>
-  {% set step = {"action": "tap", "selector": "", "text": "", "value": "", "timeout_ms": "", "name": "", "metric": "", "min": "", "max": ""} %}
+  {% set step = {"action": "tap", "selector": "", "text": "", "value": "", "timeout_ms": "", "name": "", "metric": "", "direction": "", "percent": "", "attribute": "", "min": "", "max": ""} %}
   {% include "suite_builder_step.html" %}
 </template>
 
@@ -169,11 +195,25 @@
   (() => {
     const fieldsByAction = {
       launch_app: [],
+      terminate_app: ["package"],
+      activate_app: ["package"],
+      background_app: ["timeout"],
       tap: ["selector", "text", "timeout"],
       input: ["selector", "value", "timeout"],
+      back: [],
+      swipe: ["selector", "direction", "percent"],
+      scroll: ["selector", "direction", "percent"],
+      scroll_to_text: ["text", "timeout"],
       wait: ["timeout"],
       assert_text: ["text"],
+      assert_not_text: ["text", "timeout"],
       assert_exists: ["selector", "text", "timeout"],
+      assert_not_exists: ["selector", "text", "timeout"],
+      assert_visible: ["selector", "text", "timeout"],
+      assert_enabled: ["selector", "text", "timeout"],
+      assert_attribute: ["selector", "text", "attribute", "value", "timeout"],
+      assert_current_package: ["package"],
+      assert_current_activity: ["activity"],
       screenshot: ["name"],
       collect_metrics: [],
       metric_check: ["metric", "min", "max"],
@@ -193,6 +233,7 @@
     const installedAppStatus = document.querySelector("[data-installed-app-status]");
     const loadInstalledAppsButton = document.querySelector("[data-load-installed-apps]");
     let activeStepCard = null;
+    let activeElementCategory = "action";
     let pickerLoaded = false;
     let installedAppsLoaded = false;
     let scannedElements = [];
@@ -381,69 +422,190 @@
         pickerList.append(empty);
         return;
       }
-      elements.forEach((element) => {
-        const card = document.createElement("article");
-        card.className = "element-card";
 
-        const title = document.createElement("strong");
-        title.textContent = element.label || element.selector || element.text || "요소";
-        card.append(title);
+      const categories = elementCategories(elements);
+      const available = categories.filter((category) => category.elements.length);
+      if (!available.some((category) => category.key === activeElementCategory)) {
+        activeElementCategory = available[0].key;
+      }
 
-        const meta = document.createElement("p");
-        meta.textContent = [elementRoleLabel(element), elementConfidenceLabel(element), element.bounds].filter(Boolean).join(" · ");
-        card.append(meta);
-
-        if (element.selector) {
-          const code = document.createElement("code");
-          code.textContent = element.selector;
-          card.append(code);
-        }
-
-        const actions = document.createElement("div");
-        actions.className = "actions";
-        const recommended = recommendedElementAction(element);
-        if (recommended) {
-          actions.append(
-            elementActionButton(
-              `추천: ${recommended.label}`,
-              () => addStepFromElement(element, recommended.action, recommended.mode),
-              "primary",
-            ),
-          );
-        }
-        const addSecondaryAction = (label, action, mode) => {
-          if (recommended && recommended.action === action && recommended.mode === mode) {
-            return;
-          }
-          actions.append(elementActionButton(label, () => addStepFromElement(element, action, mode)));
-        };
-        if (element.selector) {
-          addSecondaryAction("탭", "tap", "selector");
-          if (isInputElement(element)) {
-            addSecondaryAction("입력", "input", "selector");
-          }
-          addSecondaryAction("존재 검증", "assert_exists", "selector");
-
-          const selectorButton = document.createElement("button");
-          selectorButton.className = "button";
-          selectorButton.type = "button";
-          selectorButton.textContent = "현재 스텝에 선택자 채우기";
-          selectorButton.addEventListener("click", () => applyElement(element, "selector"));
-          actions.append(selectorButton);
-        }
-        if (element.text) {
-          addSecondaryAction("텍스트 검증", "assert_text", "text");
-
-          const textButton = document.createElement("button");
-          textButton.className = "button";
-          textButton.type = "button";
-          textButton.textContent = "현재 스텝에 텍스트 채우기";
-          textButton.addEventListener("click", () => applyElement(element, "text"));
-          actions.append(textButton);
-        }
-        card.append(actions);
-        pickerList.append(card);
+      const tabs = document.createElement("div");
+      tabs.className = "element-category-tabs";
+      tabs.role = "tablist";
+      tabs.setAttribute("aria-label", "화면 요소 카테고리");
+      categories.forEach((category) => {
+        tabs.append(elementCategoryTabButton(category, elements));
       });
+      pickerList.append(tabs);
+
+      const selected = available.find((category) => category.key === activeElementCategory) || available[0];
+      pickerList.append(elementCategoryPanel(selected));
+    }
+
+    function elementCategoryTabButton(category, visibleElements) {
+      const button = document.createElement("button");
+      const selected = category.key === activeElementCategory;
+      button.className = selected ? "element-category-tab active" : "element-category-tab";
+      button.type = "button";
+      button.role = "tab";
+      button.disabled = category.elements.length === 0;
+      button.setAttribute("aria-selected", selected ? "true" : "false");
+      const title = document.createElement("strong");
+      title.textContent = category.shortTitle;
+      const count = document.createElement("span");
+      count.textContent = `${category.elements.length}/${visibleElements.length}`;
+      button.append(title, count);
+      button.addEventListener("click", () => {
+        activeElementCategory = category.key;
+        renderElements(visibleElements);
+      });
+      return button;
+    }
+
+    function elementCategoryPanel(category) {
+      const section = document.createElement("section");
+      section.className = `element-category ${category.key}`;
+
+      const head = document.createElement("div");
+      head.className = "element-category-head";
+      const copy = document.createElement("div");
+      const title = document.createElement("h3");
+      title.textContent = category.title;
+      const hint = document.createElement("p");
+      hint.textContent = category.hint;
+      copy.append(title, hint);
+      const count = document.createElement("span");
+      count.className = "element-category-count";
+      count.textContent = `${category.elements.length}개`;
+      head.append(copy, count);
+
+      const grid = document.createElement("div");
+      grid.className = "element-category-grid";
+      category.elements.forEach((element) => {
+        grid.append(elementCard(element));
+      });
+
+      section.append(head, grid);
+      return section;
+    }
+
+    function elementCategories(elements) {
+      const groups = {
+        action: [],
+        input: [],
+        text: [],
+        other: [],
+      };
+      elements.forEach((element) => {
+        groups[elementCategoryKey(element)].push(element);
+      });
+      return [
+        {
+          key: "action",
+          shortTitle: "누를 요소",
+          title: "바로 누를 요소",
+          hint: "버튼, 탭, 스위치처럼 터치 동작을 만들기 좋은 후보입니다.",
+          elements: groups.action,
+        },
+        {
+          key: "input",
+          shortTitle: "입력칸",
+          title: "입력칸",
+          hint: "값을 넣는 단계로 바로 바꿀 수 있는 필드입니다.",
+          elements: groups.input,
+        },
+        {
+          key: "text",
+          shortTitle: "텍스트",
+          title: "화면 텍스트",
+          hint: "화면에 문구가 보이는지 검증하기 좋은 후보입니다.",
+          elements: groups.text,
+        },
+        {
+          key: "other",
+          shortTitle: "기타",
+          title: "기타 후보",
+          hint: "위치나 선택자는 있지만 역할을 더 확인해야 하는 요소입니다.",
+          elements: groups.other,
+        },
+      ];
+    }
+
+    function elementCategoryKey(element) {
+      if (isInputElement(element)) {
+        return "input";
+      }
+      if (isTapElement(element)) {
+        return "action";
+      }
+      if (element.text) {
+        return "text";
+      }
+      return "other";
+    }
+
+    function elementCard(element) {
+      const card = document.createElement("article");
+      card.className = "element-card";
+
+      const title = document.createElement("strong");
+      title.textContent = element.label || element.selector || element.text || "요소";
+      card.append(title);
+
+      const meta = document.createElement("p");
+      meta.textContent = [elementRoleLabel(element), elementConfidenceLabel(element), element.bounds].filter(Boolean).join(" · ");
+      card.append(meta);
+
+      if (element.selector) {
+        const code = document.createElement("code");
+        code.textContent = element.selector;
+        card.append(code);
+      }
+
+      const actions = document.createElement("div");
+      actions.className = "actions";
+      const recommended = recommendedElementAction(element);
+      if (recommended) {
+        actions.append(
+          elementActionButton(
+            `추천: ${recommended.label}`,
+            () => addStepFromElement(element, recommended.action, recommended.mode),
+            "primary",
+          ),
+        );
+      }
+      const addSecondaryAction = (label, action, mode) => {
+        if (recommended && recommended.action === action && recommended.mode === mode) {
+          return;
+        }
+        actions.append(elementActionButton(label, () => addStepFromElement(element, action, mode)));
+      };
+      if (element.selector) {
+        addSecondaryAction("탭", "tap", "selector");
+        if (isInputElement(element)) {
+          addSecondaryAction("입력", "input", "selector");
+        }
+        addSecondaryAction("존재 검증", "assert_exists", "selector");
+
+        const selectorButton = document.createElement("button");
+        selectorButton.className = "button";
+        selectorButton.type = "button";
+        selectorButton.textContent = "현재 스텝에 선택자 채우기";
+        selectorButton.addEventListener("click", () => applyElement(element, "selector"));
+        actions.append(selectorButton);
+      }
+      if (element.text) {
+        addSecondaryAction("텍스트 검증", "assert_text", "text");
+
+        const textButton = document.createElement("button");
+        textButton.className = "button";
+        textButton.type = "button";
+        textButton.textContent = "현재 스텝에 텍스트 채우기";
+        textButton.addEventListener("click", () => applyElement(element, "text"));
+        actions.append(textButton);
+      }
+      card.append(actions);
+      return card;
     }
 
     function recommendedElementAction(element) {
@@ -474,7 +636,16 @@
     function isTapElement(element) {
       const role = (element.role || "").toLowerCase();
       const className = (element.class_name || "").toLowerCase();
-      return role === "button" || role === "tab" || className.includes("button") || className.includes("imagebutton");
+      return (
+        role === "button" ||
+        role === "tab" ||
+        role === "toggle" ||
+        role === "tap target" ||
+        className.includes("button") ||
+        className.includes("checkbox") ||
+        className.includes("imagebutton") ||
+        className.includes("switch")
+      );
     }
 
     function elementRoleLabel(element) {
@@ -482,6 +653,7 @@
       const labels = {
         input: "입력칸",
         button: "버튼",
+        toggle: "토글",
         text: "텍스트",
         image: "이미지",
         checkbox: "체크박스",
@@ -531,6 +703,11 @@
         timeout_ms: "step_timeout_ms",
         name: "step_name",
         metric: "step_metric",
+        direction: "step_direction",
+        percent: "step_percent",
+        attribute: "step_attribute",
+        package: "step_package",
+        activity: "step_activity",
         min: "step_min",
         max: "step_max",
       };
@@ -563,11 +740,26 @@
 
     function stepLabel(action) {
       return {
+        launch_app: "앱 실행",
+        terminate_app: "앱 종료",
+        activate_app: "앱 활성화",
+        background_app: "백그라운드",
         tap: "탭",
         input: "입력",
+        back: "뒤로가기",
+        swipe: "스와이프",
+        scroll: "스크롤",
+        scroll_to_text: "텍스트까지 스크롤",
         wait: "대기",
         assert_text: "텍스트 검증",
+        assert_not_text: "텍스트 미노출 검증",
         assert_exists: "요소 존재 검증",
+        assert_not_exists: "요소 미존재 검증",
+        assert_visible: "표시 검증",
+        assert_enabled: "활성화 검증",
+        assert_attribute: "속성 검증",
+        assert_current_package: "현재 패키지 검증",
+        assert_current_activity: "현재 화면 검증",
         screenshot: "스크린샷",
         collect_metrics: "지표 수집",
         metric_check: "지표 확인",

@@ -1,12 +1,21 @@
 {% extends "base.html" %}
 {% block title %}실행 {{ run.run_id }} · SLA 테스트 러너{% endblock %}
+{% block head_extra %}
+  {% if run.status in ["QUEUED", "RUNNING"] %}
+    <meta http-equiv="refresh" content="2">
+  {% endif %}
+{% endblock %}
 {% block content %}
 <section class="hero-band">
-  <div>
+  <div class="hero-copy">
     <p class="eyebrow">{{ run.started_at }}</p>
     <h1>{{ run.suite_name }}</h1>
+    <p class="hero-note">실행 시간, 실패 분류, 산출물을 이어서 확인합니다.</p>
   </div>
-  <span class="status big {{ run.status|lower }}">{{ run.status }}</span>
+  <div class="actions">
+    <a class="button" href="/runs/{{ run.run_id }}/report.json">JSON 보고서</a>
+    <span class="status big {{ run.status|lower }}">{{ run.status }}</span>
+  </div>
 </section>
 
 <section class="metric-grid">
@@ -23,6 +32,61 @@
     <strong>{{ run.metric_violations }}</strong>
   </div>
 </section>
+
+{% if run.status in ["QUEUED", "RUNNING"] %}
+<section class="panel">
+  <div class="section-head">
+    <div>
+      <h2>{{ '실행 대기 중' if run.status == 'QUEUED' else '실행 중' }}</h2>
+      <p class="section-subtitle">요청은 접수됐고 Appium 실행은 백그라운드 작업자가 처리합니다.</p>
+    </div>
+  </div>
+  <div class="progress-line" aria-label="실행 진행 상태">
+    <span></span>
+  </div>
+</section>
+{% endif %}
+
+{% if metric_summary %}
+<section class="panel">
+  <div class="section-head">
+    <div>
+      <h2>수집 지표</h2>
+      <p class="section-subtitle">이번 실행에서 수집된 기술 지표와 직전 실행 대비 변화를 봅니다.</p>
+    </div>
+  </div>
+  <div class="runtime-grid">
+    {% for metric in metric_summary %}
+    <article class="runtime-card {{ metric.level }}">
+      <span>{{ metric.label }}</span>
+      <strong>{{ metric.value }}</strong>
+      <p>{{ metric.delta }}</p>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% if run_history %}
+<section class="panel">
+  <div class="section-head">
+    <div>
+      <h2>최근 실행 흐름</h2>
+      <p class="section-subtitle">같은 스위트의 최근 실행을 시간순으로 비교합니다.</p>
+    </div>
+  </div>
+  <div class="run-timeline" aria-label="최근 실행 흐름">
+    {% for item in run_history %}
+    <a class="timeline-row {{ item.status|lower }} {{ 'current' if item.is_current else '' }}" href="/runs/{{ item.run_id }}">
+      <span class="timeline-status">{{ item.status }}</span>
+      <span class="timeline-bar"><i style="width: {{ item.bar_percent }}%"></i></span>
+      <strong>{{ item.duration_ms }} ms</strong>
+      <small>{{ item.started_at }}</small>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
 
 <section class="panel">
   <div class="section-head">

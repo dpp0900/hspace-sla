@@ -2,9 +2,10 @@
 {% block title %}대시보드 · SLA 테스트 러너{% endblock %}
 {% block content %}
 <section class="hero-band">
-  <div>
+  <div class="hero-copy">
     <p class="eyebrow">로컬 Android SLA</p>
     <h1>대시보드</h1>
+    <p class="hero-note">최근 실행 결과와 SLA 위반 신호를 기준으로 다음 스위트를 바로 실행합니다.</p>
   </div>
   <div class="actions">
     <a class="button primary" href="/suites/builder">새 스위트 만들기</a>
@@ -21,13 +22,49 @@
     <span>FAIL</span>
     <strong>{{ counts.get("FAIL", 0) }}</strong>
   </div>
+  <div class="metric active">
+    <span>진행 중</span>
+    <strong>{{ counts.get("QUEUED", 0) + counts.get("RUNNING", 0) }}</strong>
+  </div>
   <div class="metric neutral">
     <span>전체</span>
-    <strong>{{ counts.get("PASS", 0) + counts.get("FAIL", 0) }}</strong>
+    <strong>{{ run_total }}</strong>
   </div>
 </section>
 
-<section class="panel">
+<section class="ops-strip" aria-label="실행 준비 요약">
+  <a href="/suites">
+    <span>저장된 스위트</span>
+    <strong>{{ suite_count }}</strong>
+  </a>
+  <a href="/settings">
+    <span>실행 환경</span>
+    <strong>SDK · ADB · Appium</strong>
+  </a>
+  <a href="/guide">
+    <span>정의 형식</span>
+    <strong>YAML</strong>
+  </a>
+</section>
+
+{% if dashboard_signals.total %}
+<section class="ops-strip signal-strip" aria-label="최근 실행 운영 신호">
+  <a href="/suites">
+    <span>최근 10회 통과율</span>
+    <strong>{{ dashboard_signals.pass_rate }}%</strong>
+  </a>
+  <a href="{{ '/runs/' ~ dashboard_signals.latest_failure.run_id if dashboard_signals.latest_failure else '/suites' }}">
+    <span>최근 실패</span>
+    <strong>{{ dashboard_signals.latest_failure.suite_name if dashboard_signals.latest_failure else '없음' }}</strong>
+  </a>
+  <a href="{{ '/runs/' ~ dashboard_signals.slowest.run_id if dashboard_signals.slowest else '/suites' }}">
+    <span>가장 느린 실행</span>
+    <strong>{{ dashboard_signals.slowest.duration_ms if dashboard_signals.slowest else 0 }} ms</strong>
+  </a>
+</section>
+{% endif %}
+
+<section class="panel dashboard-empty">
   <div class="section-head">
     <h2>최근 실행</h2>
   </div>

@@ -2,9 +2,10 @@
 {% block title %}테스트 스위트 · SLA 테스트 러너{% endblock %}
 {% block content %}
 <section class="hero-band">
-  <div>
+  <div class="hero-copy">
     <p class="eyebrow">YAML / 폼</p>
     <h1>테스트 스위트</h1>
+    <p class="hero-note">반복 실행할 Android SLA 스위트를 관리하고, 편집 방식과 실행을 한 자리에서 선택합니다.</p>
   </div>
   <div class="actions">
     <a class="button primary" href="/suites/builder">쉬운 생성기</a>
@@ -12,13 +13,13 @@
   </div>
 </section>
 
-<section class="panel">
-  {% if suites %}
+{% if suites %}
+<section class="suite-list-section" aria-label="저장된 테스트 스위트">
   <div class="suite-list">
     {% for suite in suites %}
     <article class="suite-row">
       <div class="suite-summary">
-        <h2>{{ suite.name }}</h2>
+        <h2><a class="suite-title-link" href="/suites/{{ suite.suite_id }}">{{ suite.name }}</a></h2>
         <dl class="suite-meta">
           <div>
             <dt>ID</dt>
@@ -36,18 +37,23 @@
       </div>
       <div class="actions">
         <form action="/suites/{{ suite.suite_id }}/runs" method="post">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <button class="button primary" type="submit" hx-confirm="{{ suite.name }} 스위트를 지금 실행할까요?">실행</button>
         </form>
+        <a class="button" href="/suites/{{ suite.suite_id }}">상세</a>
         <a class="button" href="/suites/{{ suite.suite_id }}/edit">편집</a>
         <a class="button" href="/suites/{{ suite.suite_id }}/export">내보내기</a>
         <form action="/suites/{{ suite.suite_id }}/delete" method="post">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <button class="button danger" type="submit" hx-confirm="{{ suite.name }} 스위트를 삭제할까요? 실행 기록과 산출물은 유지됩니다.">삭제</button>
         </form>
       </div>
     </article>
     {% endfor %}
   </div>
-  {% else %}
+  </section>
+{% else %}
+<section class="panel">
   <div class="empty-state">
     <h2>아직 스위트가 없습니다</h2>
     <p>쉬운 생성기로 만들거나 YAML을 직접 붙여넣어 시작하세요.</p>
@@ -56,6 +62,6 @@
       <a class="button" href="/suites/new">YAML 편집기</a>
     </div>
   </div>
-  {% endif %}
 </section>
+{% endif %}
 {% endblock %}

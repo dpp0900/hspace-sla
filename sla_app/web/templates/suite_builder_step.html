@@ -5,11 +5,25 @@
       <select name="step_action">
         {% for value, label in [
           ("launch_app", "앱 실행"),
+          ("terminate_app", "앱 종료"),
+          ("activate_app", "앱 활성화"),
+          ("background_app", "백그라운드"),
           ("tap", "탭"),
           ("input", "입력"),
+          ("back", "뒤로가기"),
+          ("swipe", "스와이프"),
+          ("scroll", "스크롤"),
+          ("scroll_to_text", "텍스트까지 스크롤"),
           ("wait", "대기"),
           ("assert_text", "텍스트 검증"),
+          ("assert_not_text", "텍스트 미노출 검증"),
           ("assert_exists", "요소 존재 검증"),
+          ("assert_not_exists", "요소 미존재 검증"),
+          ("assert_visible", "표시 검증"),
+          ("assert_enabled", "활성화 검증"),
+          ("assert_attribute", "속성 검증"),
+          ("assert_current_package", "현재 패키지 검증"),
+          ("assert_current_activity", "현재 화면 검증"),
           ("screenshot", "스크린샷"),
           ("collect_metrics", "지표 수집"),
           ("metric_check", "지표 확인")
@@ -38,6 +52,24 @@
       <span>입력값</span>
       <input type="text" name="step_value" value="{{ step.value|default('', true) }}">
     </label>
+    <label data-step-field="direction">
+      <span>방향</span>
+      <select name="step_direction">
+        {% for value, label in [
+          ("", "기본"),
+          ("up", "위"),
+          ("down", "아래"),
+          ("left", "왼쪽"),
+          ("right", "오른쪽")
+        ] %}
+        <option value="{{ value }}" {{ 'selected' if step.direction|default('', true) == value else '' }}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label data-step-field="percent">
+      <span>이동 비율</span>
+      <input type="number" min="0.1" step="0.05" name="step_percent" value="{{ step.percent|default('', true) }}">
+    </label>
     <label data-step-field="timeout">
       <span>대기 시간(ms)</span>
       <input type="number" min="0" name="step_timeout_ms" value="{{ step.timeout_ms|default('', true) }}">
@@ -49,6 +81,18 @@
     <label data-step-field="metric">
       <span>지표</span>
       <input type="text" name="step_metric" value="{{ step.metric|default('memory_mb', true) }}">
+    </label>
+    <label data-step-field="attribute">
+      <span>속성</span>
+      <input type="text" name="step_attribute" value="{{ step.attribute|default('', true) }}" placeholder="enabled">
+    </label>
+    <label data-step-field="package">
+      <span>패키지</span>
+      <input type="text" name="step_package" value="{{ step.package|default('', true) }}" placeholder="com.example">
+    </label>
+    <label data-step-field="activity">
+      <span>화면</span>
+      <input type="text" name="step_activity" value="{{ step.activity|default('', true) }}" placeholder="*.MainActivity">
     </label>
     <label data-step-field="min">
       <span>최소</span>

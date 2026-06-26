@@ -22,15 +22,43 @@ from .models import (
 class ExecutionAdapter(Protocol):
     def launch_app(self) -> None: ...
 
+    def activate_app(self, step: ActionStep) -> None: ...
+
+    def terminate_app(self, step: ActionStep) -> None: ...
+
+    def background_app(self, step: ActionStep) -> None: ...
+
     def tap(self, step: ActionStep) -> None: ...
 
     def input(self, step: ActionStep) -> None: ...
+
+    def back(self, step: ActionStep) -> None: ...
+
+    def swipe(self, step: ActionStep) -> None: ...
+
+    def scroll(self, step: ActionStep) -> None: ...
+
+    def scroll_to_text(self, step: ActionStep) -> None: ...
 
     def wait(self, step: ActionStep) -> None: ...
 
     def assert_text(self, step: ActionStep) -> None: ...
 
+    def assert_not_text(self, step: ActionStep) -> None: ...
+
     def assert_exists(self, step: ActionStep) -> None: ...
+
+    def assert_not_exists(self, step: ActionStep) -> None: ...
+
+    def assert_visible(self, step: ActionStep) -> None: ...
+
+    def assert_enabled(self, step: ActionStep) -> None: ...
+
+    def assert_attribute(self, step: ActionStep) -> None: ...
+
+    def assert_current_package(self, step: ActionStep) -> None: ...
+
+    def assert_current_activity(self, step: ActionStep) -> None: ...
 
     def screenshot(self, step: ActionStep, artifact_dir: Path) -> str: ...
 
@@ -122,16 +150,44 @@ def _execute_scenario(
         try:
             if step.action == "launch_app":
                 adapter.launch_app()
+            elif step.action == "activate_app":
+                adapter.activate_app(step)
+            elif step.action == "terminate_app":
+                adapter.terminate_app(step)
+            elif step.action == "background_app":
+                adapter.background_app(step)
             elif step.action == "tap":
                 adapter.tap(step)
             elif step.action == "input":
                 adapter.input(step)
+            elif step.action == "back":
+                adapter.back(step)
+            elif step.action == "swipe":
+                adapter.swipe(step)
+            elif step.action == "scroll":
+                adapter.scroll(step)
+            elif step.action == "scroll_to_text":
+                adapter.scroll_to_text(step)
             elif step.action == "wait":
                 adapter.wait(step)
             elif step.action == "assert_text":
                 adapter.assert_text(step)
+            elif step.action == "assert_not_text":
+                adapter.assert_not_text(step)
             elif step.action == "assert_exists":
                 adapter.assert_exists(step)
+            elif step.action == "assert_not_exists":
+                adapter.assert_not_exists(step)
+            elif step.action == "assert_visible":
+                adapter.assert_visible(step)
+            elif step.action == "assert_enabled":
+                adapter.assert_enabled(step)
+            elif step.action == "assert_attribute":
+                adapter.assert_attribute(step)
+            elif step.action == "assert_current_package":
+                adapter.assert_current_package(step)
+            elif step.action == "assert_current_activity":
+                adapter.assert_current_activity(step)
             elif step.action == "screenshot":
                 screenshot_path = adapter.screenshot(step, artifact_dir)
             elif step.action == "collect_metrics":
@@ -259,6 +315,8 @@ def _failure_category(
         return "검증 실패"
     if "element not found" in normalized:
         return "요소 찾기 실패"
+    if "text not found" in normalized:
+        return "텍스트 검증 실패"
     if "unsupported action" in normalized:
         return "지원하지 않는 동작"
     return "실행 오류"
